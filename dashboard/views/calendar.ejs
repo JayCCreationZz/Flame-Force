@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Flame Force Battle Calendar</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-900 text-white min-h-screen">
+
+<div class="max-w-7xl mx-auto p-6">
+
+<!-- HEADER -->
+
+<h1 class="text-3xl font-bold text-orange-400 mb-6">
+🔥 Flame Force Weekly Battle Schedule
+</h1>
+
+
+<!-- WEEKLY GRID -->
+
+<div class="grid grid-cols-7 gap-4">
+
+<% Object.keys(week).forEach(day => { %>
+
+<div class="bg-gray-800 rounded-xl p-4 shadow">
+
+<h2 class="text-orange-400 font-semibold mb-3">
+<%= day %>
+</h2>
+
+
+<% if (week[day].length === 0) { %>
+
+<p class="text-gray-500 text-sm">
+No battles scheduled
+</p>
+
+<% } %>
+
+
+<% week[day].forEach(battle => { %>
+
+<div class="bg-gray-700 rounded p-3 mb-3">
+
+<!-- TIME -->
+
+<div class="font-bold text-sm">
+<%= battle.time %>
+</div>
+
+
+<!-- MATCHUP -->
+
+<div class="text-sm mb-2">
+<%= battle.host %> vs <%= battle.opponent %>
+</div>
+
+
+<!-- POSTER -->
+
+<% if (battle.poster) { %>
+
+<a href="<%= battle.poster %>" target="_blank">
+
+<img
+src="<%= battle.poster %>"
+class="rounded-lg mt-2">
+
+</a>
+
+<% } %>
+
+
+<!-- LIVE BUTTON -->
+
+<% if (battle.liveLink) { %>
+
+<a
+href="<%= battle.liveLink %>"
+target="_blank"
+class="block mt-3 bg-green-600 text-center py-1 rounded hover:bg-green-700">
+
+▶ Join Live
+
+</a>
+
+<% } %>
+
+</div>
+
+<% }) %>
+
+</div>
+
+<% }) %>
+
+</div>
+
+</div>
+
+</body>
+</html>

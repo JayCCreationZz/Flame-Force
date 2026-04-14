@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Edit Battle | Flame Force</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-900 text-white min-h-screen">
+
+<div class="max-w-4xl mx-auto p-6">
+
+<!-- HEADER -->
+
+<div class="flex justify-between items-center mb-8">
+
+<h1 class="text-3xl font-bold text-orange-400">
+✏️ Edit Battle
+</h1>
+
+<a href="/dashboard"
+class="bg-gray-700 px-4 py-2 rounded hover:bg-gray-600">
+Back to Dashboard
+</a>
+
+</div>
+
+
+<!-- EDIT FORM -->
+
+<div class="bg-gray-800 rounded-xl p-6 shadow">
+
+<form action="/edit/<%= battle.id %>" method="POST"
+class="grid grid-cols-2 gap-4">
+
+
+<!-- HOST -->
+
+<label class="col-span-2 text-orange-300">
+Host
+</label>
+
+<input
+name="host"
+value="<%= battle.host %>"
+required
+class="p-2 rounded bg-gray-700">
+
+
+<!-- OPPONENT -->
+
+<label class="col-span-2 text-orange-300">
+Opponent
+</label>
+
+<input
+name="opponent"
+value="<%= battle.opponent %>"
+required
+class="p-2 rounded bg-gray-700">
+
+
+<!-- DATE -->
+
+<label class="col-span-2 text-orange-300">
+Date (DD/MM/YYYY)
+</label>
+
+<input
+name="date"
+value="<%= battle.date %>"
+required
+class="p-2 rounded bg-gray-700">
+
+
+<!-- TIME -->
+
+<label class="col-span-2 text-orange-300">
+Time (HH:MM)
+</label>
+
+<input
+name="time"
+value="<%= battle.time %>"
+required
+class="p-2 rounded bg-gray-700">
+
+
+<!-- POSTER -->
+
+<label class="col-span-2 text-orange-300">
+Poster Image URL
+</label>
+
+<input
+name="poster"
+value="<%= battle.poster || '' %>"
+class="p-2 rounded bg-gray-700 col-span-2">
+
+
+<!-- LIVE LINK -->
+
+<label class="col-span-2 text-orange-300">
+TikTok LIVE Link
+</label>
+
+<input
+name="liveLink"
+value="<%= battle.liveLink || '' %>"
+class="p-2 rounded bg-gray-700 col-span-2">
+
+
+<!-- CHANNEL -->
+
+<label class="col-span-2 text-orange-300">
+Discord Channel
+</label>
+
+<select
+name="channel"
+required
+class="p-2 rounded bg-gray-700 col-span-2">
+
+<% channels.forEach(channel => { %>
+
+<option
+value="<%= channel.id %>"
+<%= battle.channel === channel.id ? "selected" : "" %>>
+
+#<%= channel.name %>
+
+</option>
+
+<% }) %>
+
+</select>
+
+
+<!-- SAVE BUTTON -->
+
+<button
+class="col-span-2 bg-orange-500 hover:bg-orange-600 p-3 rounded font-bold mt-4">
+
+Save Changes
+
+</button>
+
+</form>
+
+</div>
+
+</div>
+
+</body>
+</html>

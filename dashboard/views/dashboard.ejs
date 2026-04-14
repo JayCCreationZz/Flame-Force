@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Flame Force Dashboard</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-900 text-white min-h-screen">
+
+<div class="max-w-7xl mx-auto p-6">
+
+<!-- HEADER -->
+
+<div class="flex justify-between items-center mb-8">
+
+<h1 class="text-3xl font-bold text-orange-400">
+🔥 Flame Force Control Panel
+</h1>
+
+<a href="/logout"
+class="bg-red-600 px-4 py-2 rounded hover:bg-red-700">
+Logout
+</a>
+
+</div>
+
+
+<!-- WEEKLY CALENDAR GRID -->
+
+<div class="grid grid-cols-7 gap-4 mb-10">
+
+<% Object.keys(week).forEach(day => { %>
+
+<div class="bg-gray-800 rounded-xl p-4 shadow">
+
+<h2 class="text-orange-400 font-semibold mb-3">
+<%= day %>
+</h2>
+
+<% if (week[day].length === 0) { %>
+
+<p class="text-gray-500 text-sm">
+No battles scheduled
+</p>
+
+<% } %>
+
+<% week[day].forEach(battle => { %>
+
+<div class="bg-gray-700 p-2 rounded mb-2">
+
+<div class="text-sm font-bold">
+<%= battle.time %>
+</div>
+
+<div class="text-sm">
+<%= battle.host %> vs <%= battle.opponent %>
+</div>
+
+<% if (battle.poster) { %>
+
+<a href="<%= battle.poster %>" target="_blank">
+<img src="<%= battle.poster %>"
+class="rounded-lg mt-2">
+</a>
+
+<% } %>
+
+<a href="/edit/<%= battle.id %>"
+class="text-blue-400 text-xs hover:underline">
+
+Edit
+
+</a>
+
+</div>
+
+<% }) %>
+
+</div>
+
+<% }) %>
+
+</div>
+
+
+<!-- CREATE BATTLE PANEL -->
+
+<div class="bg-gray-800 rounded-xl p-6 shadow mb-8">
+
+<h2 class="text-xl font-semibold mb-4">
+Create Battle
+</h2>
+
+<form action="/create" method="POST"
+class="grid grid-cols-2 gap-4">
+
+<input name="host"
+placeholder="Host"
+required
+class="p-2 rounded bg-gray-700">
+
+<input name="opponent"
+placeholder="Opponent"
+required
+class="p-2 rounded bg-gray-700">
+
+<input name="date"
+placeholder="DD/MM/YYYY"
+required
+class="p-2 rounded bg-gray-700">
+
+<input name="time"
+placeholder="HH:MM"
+required
+class="p-2 rounded bg-gray-700">
+
+
+<!-- POSTER FIELD -->
+
+<input name="poster"
+placeholder="Poster image URL (optional)"
+class="p-2 rounded bg-gray-700 col-span-2">
+
+
+<!-- CHANNEL SELECTOR -->
+
+<select name="channel"
+required
+class="p-2 rounded bg-gray-700 col-span-2">
+
+<% channels.forEach(channel => { %>
+
+<option value="<%= channel.id %>">
+#<%= channel.name %>
+</option>
+
+<% }) %>
+
+</select>
+
+
+<button
+class="col-span-2 bg-orange-500 hover:bg-orange-600 p-2 rounded font-bold">
+
+Schedule Battle
+
+</button>
+
+</form>
+
+</div>
+
+
+<!-- SCHEDULED BATTLES TABLE -->
+
+<div class="bg-gray-800 rounded-xl p-6 shadow">
+
+<h2 class="text-xl font-semibold mb-4">
+Scheduled Battles
+</h2>
+
+<table class="w-full text-left">
+
+<thead>
+
+<tr class="text-orange-400">
+
+<th>Date</th>
+<th>Time</th>
+<th>Host</th>
+<th>Opponent</th>
+<th>Channel</th>
+<th>Poster</th>
+<th>Actions</th>
+
+</tr>
+
+</thead>
+
+<tbody>
+
+<% battles.forEach(battle => { %>
+
+<tr class="border-t border-gray-700">
+
+<td><%= battle.date %></td>
+<td><%= battle.time %></td>
+<td><%= battle.host %></td>
+<td><%= battle.opponent %></td>
+
+<td>
+<%= channelMap[battle.channel] ? "#" + channelMap[battle.channel] : "Unknown" %>
+</td>
+
+<td>
+
+<% if (battle.poster) { %>
+
+<a href="<%= battle.poster %>" target="_blank"
+class="text-blue-400 underline">
+View Poster
+</a>
+
+<% } else { %>
+
+<span class="text-gray-500">
+None
+</span>
+
+<% } %>
+
+</td>
+
+<td class="flex gap-2">
+
+<a href="/edit/<%= battle.id %>"
+class="bg-blue-600 px-3 py-1 rounded hover:bg-blue-700">
+
+✏️ Edit
+
+</a>
+
+<form action="/delete/<%= battle.id %>"
+method="POST"
+onsubmit="return confirm('Delete this battle?');">
+
+<button
+class="bg-red-600 px-3 py-1 rounded hover:bg-red-700">
+
+❌ Delete
+
+</button>
+
+</form>
+
+</td>
+
+</tr>
+
+<% }) %>
+
+</tbody>
+
+</table>
+
+</div>
+
+</div>
+
+</body>
+</html>
