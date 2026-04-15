@@ -1,19 +1,47 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+<meta charset="UTF-8">
+<title>Flame Force Login</title>
+
+<link rel="icon" type="image/png" href="/favicon.png">
+
 <script src="https://cdn.tailwindcss.com"></script>
+
+<style>
+.logo-glow {
+    animation: emberGlow 2.5s ease-in-out infinite alternate;
+}
+
+@keyframes emberGlow {
+    from {
+        filter: drop-shadow(0 0 6px #ff7a00)
+                drop-shadow(0 0 12px #ff3c00);
+    }
+    to {
+        filter: drop-shadow(0 0 12px #ffae00)
+                drop-shadow(0 0 24px #ff4500);
+    }
+}
+</style>
+
 </head>
 
 <body class="bg-gray-900 flex items-center justify-center min-h-screen text-white">
 
-<div class="bg-gray-800 p-10 rounded-xl text-center">
+<div class="text-center">
 
-<h1 class="text-3xl font-bold text-orange-400 mb-6">
-🔥 Flame Force
+<img src="/logo.png"
+class="w-36 mx-auto mb-6 logo-glow">
+
+<h1 class="text-3xl font-bold mb-6">
+
+🔥 Flame Force Battle Dashboard
+
 </h1>
 
 <a href="/login"
-class="bg-indigo-600 px-6 py-3 rounded hover:bg-indigo-700">
+class="bg-orange-600 hover:bg-orange-700 px-8 py-3 rounded-lg text-lg font-semibold shadow-lg">
 
 Login with Discord
 
