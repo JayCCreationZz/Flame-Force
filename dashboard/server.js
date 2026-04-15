@@ -18,9 +18,9 @@ ROLE CONFIG
 Replace with your real role IDs
 */
 const config = {
-  ownerRoles: ["OWNER_ROLE_ID"],
-  adminRoles: ["BLAZE_ROLE_ID"],
-  memberRoles: ["EMBER_ROLE_ID", "SPARK_ROLE_ID"]
+  ownerRoles: ["1439255505053683804"],
+  adminRoles: ["1471132938467803322"],
+  memberRoles: ["1439256282409209926", "1439256200658157588"]
 };
 
 /*
