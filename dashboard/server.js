@@ -6,29 +6,21 @@ const multer = require("multer");
 const sharp = require("sharp");
 const fs = require("fs");
 const path = require("path");
-const FormData = require("form-data");
 const axios = require("axios");
+const FormData = require("form-data");
 
 const db = require("../database");
 
 const app = express();
 
 /*
-FLAME FORCE CONFIG
+ROLE CONFIG
+Replace with your real role IDs
 */
 const config = {
-  token: process.env.TOKEN,
-  clientId: process.env.CLIENT_ID,
-  clientSecret: process.env.CLIENT_SECRET,
-  guildId: process.env.GUILD_ID,
-  callbackURL: process.env.CALLBACK_URL,
-
-  ownerRoles: ["1439255505053683804"],
-  adminRoles: ["1471132938467803322"],
-  memberRoles: [
-    "1439256282409209926",
-    "1439256200658157588"
-  ]
+  ownerRoles: ["OWNER_ROLE_ID"],
+  adminRoles: ["BLAZE_ROLE_ID"],
+  memberRoles: ["EMBER_ROLE_ID", "SPARK_ROLE_ID"]
 };
 
 /*
@@ -39,10 +31,9 @@ const upload = multer({
 });
 
 /*
-AUTO-RESIZE POSTERS
+POSTER RESIZE
 */
 async function processPoster(file) {
-
   if (!file) return null;
 
   const postersDir = path.join(
@@ -88,7 +79,7 @@ app.use(
 app.use(express.urlencoded({ extended: true }));
 
 /*
-SESSION CONFIG
+SESSION
 */
 app.set("trust proxy", 1);
 
@@ -113,9 +104,9 @@ DISCORD LOGIN
 passport.use(
   new DiscordStrategy(
     {
-      clientID: config.clientId,
-      clientSecret: config.clientSecret,
-      callbackURL: config.callbackURL,
+      clientID: process.env.CLIENT_ID,
+      clientSecret: process.env.CLIENT_SECRET,
+      callbackURL: process.env.CALLBACK_URL,
       scope: ["identify"]
     },
     (accessToken, refreshToken, profile, done) =>
@@ -127,33 +118,84 @@ passport.serializeUser((u, d) => d(null, u));
 passport.deserializeUser((o, d) => d(null, o));
 
 /*
-ROLE CHECK
+SAFE ROLE LOOKUP
 */
 async function getUserRoleLevel(req) {
-
-  if (!req.user?.id) return "none";
-
-  const response = await axios.get(
-    `https://discord.com/api/guilds/${config.guildId}/members/${req.user.id}`,
-    {
-      headers: {
-        Authorization: `Bot ${config.token}`
+  try {
+    const response = await axios.get(
+      `https://discord.com/api/v10/guilds/${process.env.GUILD_ID}/members/${req.user.id}`,
+      {
+        headers: {
+          Authorization: `Bot ${process.env.TOKEN.trim()}`
+        }
       }
-    }
-  );
+    );
 
-  const member = response.data;
+    const roles = response.data.roles;
 
-  if (member.roles.some(r => config.ownerRoles.includes(r)))
-    return "owner";
+    if (roles.some(r => config.ownerRoles.includes(r)))
+      return "owner";
 
-  if (member.roles.some(r => config.adminRoles.includes(r)))
-    return "admin";
+    if (roles.some(r => config.adminRoles.includes(r)))
+      return "admin";
 
-  if (member.roles.some(r => config.memberRoles.includes(r)))
-    return "member";
+    if (roles.some(r => config.memberRoles.includes(r)))
+      return "member";
 
-  return "none";
+    return "none";
+
+  } catch (err) {
+    console.log("Role lookup failed:", err.message);
+    return "none";
+  }
+}
+
+/*
+LOAD AGENCY MEMBERS FROM DISCORD
+*/
+async function getAgencyMembers() {
+
+  try {
+
+    const response = await axios.get(
+      `https://discord.com/api/v10/guilds/${process.env.GUILD_ID}/members?limit=1000`,
+      {
+        headers: {
+          Authorization: `Bot ${process.env.TOKEN.trim()}`
+        }
+      }
+    );
+
+    const agencyRoleIDs = [
+      ...config.ownerRoles,
+      ...config.adminRoles,
+      ...config.memberRoles
+    ];
+
+    return response.data
+      .filter(member =>
+        member.roles.some(role =>
+          agencyRoleIDs.includes(role)
+        )
+      )
+      .map(member => ({
+        id: member.user.id,
+        name:
+          member.nick ||
+          member.user.global_name ||
+          member.user.username
+      }));
+
+  } catch (err) {
+
+    console.log(
+      "Failed loading agency members:",
+      err.message
+    );
+
+    return [];
+
+  }
 }
 
 /*
@@ -170,6 +212,7 @@ async function checkAuth(req, res, next) {
     return res.send("Access denied");
 
   next();
+
 }
 
 /*
@@ -192,22 +235,22 @@ app.get("/logout", (req, res) =>
 );
 
 /*
-DASHBOARD VIEW
+DASHBOARD
 */
-app.get("/dashboard", checkAuth, (req, res) => {
+app.get("/dashboard", checkAuth, async (req, res) => {
+
+  const agencyMembers = await getAgencyMembers();
 
   db.all(
     "SELECT * FROM battles ORDER BY date, time",
     [],
     (err, battles) => {
 
-      if (err) {
-        console.error(err);
-        return res.send("Database error");
-      }
+      if (err) return res.send("Database error");
 
       res.render("dashboard", {
         battles,
+        agencyMembers,
         roleLevel: req.roleLevel
       });
 
@@ -241,15 +284,15 @@ app.post(
 
         try {
 
-          console.log("Posting battle to Discord...");
-
           const form = new FormData();
 
           const messageText =
             `🔥 **Flame Force Battle Scheduled!** 🔥\n\n` +
-            `⚔ ${host} vs ${opponent}\n` +
+            `⚔ <@${host}> vs <@${opponent}>\n` +
             `📅 ${date} ⏰ ${time}\n\n` +
-            (liveLink ? `🔗 Watch here:\n${liveLink}` : "");
+            (liveLink
+              ? `🔗 Watch here:\n${liveLink}`
+              : "");
 
           form.append("content", messageText);
 
@@ -283,9 +326,9 @@ app.post(
 
         } catch (err) {
 
-          console.error(
+          console.log(
             "Discord post failed:",
-            err.response?.data || err.message
+            err.message
           );
 
         }
@@ -316,7 +359,7 @@ app.post("/delete/:id", checkAuth, (req, res) => {
 });
 
 /*
-CALENDAR VIEW
+CALENDAR
 */
 app.get("/calendar", (req, res) => {
 
@@ -325,8 +368,7 @@ app.get("/calendar", (req, res) => {
     [],
     (err, battles) => {
 
-      if (err)
-        return res.send("Database error");
+      if (err) return res.send("Database error");
 
       res.render("calendar", { battles });
 
@@ -341,7 +383,5 @@ START SERVER
 const PORT = process.env.PORT || 8080;
 
 app.listen(PORT, () =>
-  console.log(
-    `🔥 Flame Force dashboard running on port ${PORT}`
-  )
+  console.log(`🔥 Flame Force dashboard running on ${PORT}`)
 );
