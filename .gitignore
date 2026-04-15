@@ -1,0 +1,4 @@
+node_modules
+flameforce.db
+.env
+config.json
