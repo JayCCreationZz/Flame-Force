@@ -2,147 +2,170 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Flame Force Dashboard</title>
+<title>Flame Force Control Panel</title>
 
 <link rel="icon" href="/favicon.png">
 
 <style>
 
-body {
-    font-family: Arial;
-    background:#0e0e0e;
-    color:white;
-    margin:0;
+body{
+margin:0;
+font-family:Segoe UI,Arial;
+background:linear-gradient(180deg,#0b0b0b,#151515);
+color:white;
 }
 
 /* HEADER */
 
-header {
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    background:#111;
-    padding:14px 30px;
-    border-bottom:2px solid #ff6600;
-    position:relative;
-    z-index:1000;
+header{
+display:flex;
+justify-content:space-between;
+align-items:center;
+padding:18px 40px;
+background:#0f0f0f;
+border-bottom:2px solid #ff6600;
+position:sticky;
+top:0;
+z-index:999;
 }
 
-/* ANIMATED EMBLEM */
+/* LOGO */
 
-.logo img {
-    height:48px;
-    animation: flameGlow 2.5s infinite alternate ease-in-out;
+.logo{
+display:flex;
+align-items:center;
+gap:12px;
 }
 
-@keyframes flameGlow {
-
-0% {
-    filter:
-        drop-shadow(0 0 4px #ff6600)
-        drop-shadow(0 0 8px #ff3300);
+.logo img{
+height:48px;
+animation:glowPulse 2.5s infinite alternate ease-in-out;
 }
 
-100% {
-    filter:
-        drop-shadow(0 0 10px #ffaa00)
-        drop-shadow(0 0 22px #ff2200);
-}
-
+@keyframes glowPulse{
+0%{filter:drop-shadow(0 0 6px #ff6600);}
+100%{filter:drop-shadow(0 0 22px #ffaa00);}
 }
 
 /* NAV */
 
-.nav a {
-    margin-left:20px;
-    text-decoration:none;
-    color:#ff6600;
-    font-weight:bold;
+.nav a{
+margin-left:24px;
+color:#ff6600;
+font-weight:600;
+text-decoration:none;
 }
 
 /* PAGE WRAPPER */
 
-.container {
-    padding:30px;
+.wrapper{
+padding:40px;
+max-width:1300px;
+margin:auto;
 }
 
-/* CREATE PANEL */
+/* PANEL */
 
-.form-box {
-    background:#1a1a1a;
-    padding:25px;
-    border-radius:12px;
-    margin-bottom:30px;
-    box-shadow:0 0 12px rgba(255,120,0,.2);
+.panel{
+background:#181818;
+padding:26px;
+border-radius:14px;
+box-shadow:0 0 25px rgba(255,110,0,.15);
+margin-bottom:40px;
 }
 
-input, select {
+/* FORM GRID */
 
-    width:100%;
-    padding:10px;
-    margin-top:8px;
-    margin-bottom:16px;
-    border:none;
-    border-radius:6px;
+.form-grid{
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:18px;
 }
 
-/* BUTTONS */
+/* INPUTS */
 
-button {
-
-    padding:10px 16px;
-    border:none;
-    border-radius:6px;
-    cursor:pointer;
-    font-weight:bold;
+input,select{
+width:100%;
+padding:12px;
+border:none;
+border-radius:8px;
+background:#101010;
+color:white;
 }
 
-.create-btn {
-    background:#ff6600;
-    color:white;
+/* BUTTON */
+
+button{
+border:none;
+padding:12px 20px;
+border-radius:8px;
+cursor:pointer;
+font-weight:600;
 }
 
-.edit-btn {
-    background:#ffaa00;
-    margin-right:8px;
+.create-btn{
+background:linear-gradient(90deg,#ff6600,#ff3300);
+color:white;
 }
 
-.delete-btn {
-    background:#ff3333;
-    color:white;
+/* BATTLE GRID */
+
+.battle-grid{
+display:grid;
+grid-template-columns:repeat(auto-fill,minmax(320px,1fr));
+gap:28px;
 }
 
 /* CARD */
 
-.card {
+.card{
+background:#1b1b1b;
+border-radius:16px;
+padding:22px;
+box-shadow:0 0 18px rgba(255,100,0,.12);
+transition:.25s;
+}
 
-    background:#1a1a1a;
-    padding:20px;
-    border-radius:12px;
-    margin-bottom:20px;
-
-    box-shadow:
-        0 0 12px rgba(255,120,0,.15);
+.card:hover{
+transform:translateY(-6px);
+box-shadow:0 0 30px rgba(255,120,0,.25);
 }
 
 /* POSTER */
 
-.poster {
-
-    width:180px;
-    border-radius:10px;
-    margin-top:10px;
-
-    box-shadow:
-        0 0 10px rgba(255,120,0,.4);
+.poster{
+width:100%;
+border-radius:12px;
+margin-top:12px;
 }
 
-/* META */
+/* TOOLBAR */
 
-.meta {
+.toolbar{
+margin-top:14px;
+display:flex;
+gap:10px;
+}
 
-    opacity:.7;
-    font-size:13px;
+.edit-btn{
+background:#ffaa00;
+}
+
+.delete-btn{
+background:#ff3333;
+color:white;
+}
+
+/* LABEL */
+
+label{
+font-size:13px;
+opacity:.7;
+}
+
+.section-title{
+margin-bottom:18px;
+color:#ffaa00;
 }
 
 </style>
@@ -154,6 +177,7 @@ button {
 
 <div class="logo">
 <img src="/logo.png">
+<h2>Flame Force Control Panel</h2>
 </div>
 
 <div class="nav">
@@ -164,59 +188,61 @@ button {
 
 </header>
 
-<div class="container">
+<div class="wrapper">
 
-<% if (roleLevel === "owner" || roleLevel === "admin") { %>
+<% if(roleLevel==="owner" || roleLevel==="admin"){ %>
 
-<div class="form-box">
+<div class="panel">
 
-<h2>Create Battle</h2>
+<h2 class="section-title">Create Battle</h2>
 
 <form action="/create" method="POST" enctype="multipart/form-data">
 
-<label>Host Creator (Agency)</label>
+<div class="form-grid">
 
-<select name="host" required>
-
-<% agencyMembers.forEach(member => { %>
-
-<option value="<%= member.id %>">
-<%= member.name %>
+<div>
+<label>Host Creator</label>
+<select name="host">
+<% agencyMembers.forEach(member=>{ %>
+<option value="<%=member.id%>">
+<%=member.name%>
 </option>
-
 <% }) %>
-
 </select>
+</div>
 
+<div>
+<label>Opponent</label>
+<input name="opponent"
+placeholder="TikTok username">
+</div>
 
-<label>Opponent (External or Agency)</label>
-
-<input
-type="text"
-name="opponent"
-placeholder="Enter opponent TikTok username"
-required>
-
-
+<div>
 <label>Date</label>
-<input type="date" name="date" required>
+<input type="date" name="date">
+</div>
 
+<div>
 <label>Time</label>
-<input type="time" name="time" required>
+<input type="time" name="time">
+</div>
 
-
+<div>
 <label>Live Link</label>
-<input type="text" name="liveLink">
+<input name="liveLink">
+</div>
 
-
+<div>
 <label>Poster Upload</label>
 <input type="file" name="poster">
+</div>
 
+</div>
+
+<br>
 
 <button class="create-btn">
-
 Create Battle
-
 </button>
 
 </form>
@@ -226,122 +252,97 @@ Create Battle
 <% } %>
 
 
-<h2>Scheduled Battles</h2>
+<h2 class="section-title">Scheduled Battles</h2>
 
+<div class="battle-grid">
 
-<% battles.forEach(battle => { %>
+<% battles.forEach(battle=>{ %>
 
 <div class="card">
 
 <form
-action="/edit/<%= battle.id %>"
+action="/edit/<%=battle.id%>"
 method="POST"
 enctype="multipart/form-data">
 
 <label>Host</label>
 
 <select name="host">
-
-<% agencyMembers.forEach(member => { %>
-
-<option
-value="<%= member.id %>"
-<%= member.id == battle.host ? "selected" : "" %>>
-
-<%= member.name %>
-
+<% agencyMembers.forEach(member=>{ %>
+<option value="<%=member.id%>"
+<%=member.id==battle.host?"selected":""%>>
+<%=member.name%>
 </option>
-
 <% }) %>
-
 </select>
-
 
 <label>Opponent</label>
 
 <input
-type="text"
 name="opponent"
-value="<%= battle.opponent %>">
-
+value="<%=battle.opponent%>">
 
 <label>Date</label>
 
 <input
 type="date"
 name="date"
-value="<%= battle.date %>">
-
+value="<%=battle.date%>">
 
 <label>Time</label>
 
 <input
 type="time"
 name="time"
-value="<%= battle.time %>">
-
+value="<%=battle.time%>">
 
 <label>Live Link</label>
 
 <input
-type="text"
 name="liveLink"
-value="<%= battle.liveLink || "" %>">
-
+value="<%=battle.liveLink||""%>">
 
 <label>Replace Poster</label>
 
 <input type="file" name="poster">
 
-
-<div class="meta">
-
-Battle ID:
-<%= battle.id %>
-
-</div>
-
-
-<% if (battle.poster) { %>
+<% if(battle.poster){ %>
 
 <img
 class="poster"
-src="<%= battle.poster %>">
+src="<%=battle.poster%>">
 
 <% } %>
 
+<% if(roleLevel==="owner"||roleLevel==="admin"){ %>
 
-<br><br>
-
-<% if (roleLevel === "owner" || roleLevel === "admin") { %>
+<div class="toolbar">
 
 <button class="edit-btn">
-
-Save Changes
-
+Save
 </button>
 
 </form>
 
-
 <form
-style="display:inline"
-action="/delete/<%= battle.id %>"
+action="/delete/<%=battle.id%>"
 method="POST">
 
 <button class="delete-btn">
-
 Delete
-
 </button>
 
 </form>
+
+</div>
 
 <% } %>
 
 </div>
 
 <% }) %>
+
+</div>
 
 </div>
 
