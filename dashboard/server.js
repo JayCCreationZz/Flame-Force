@@ -14,13 +14,13 @@ const db = require("../database");
 const app = express();
 
 /*
-ROLE CONFIG
-Replace with your real role IDs
+ROLE CONFIG (Flame Force)
+Replace only if roles change later
 */
 const config = {
-  ownerRoles: ["1439255505053683804"],
-  adminRoles: ["1471132938467803322"],
-  memberRoles: ["1439256282409209926", "1439256200658157588"]
+  ownerRoles: ["1465436891238367284"],
+  adminRoles: ["1493636042354331779"],
+  memberRoles: ["1458157807361720426"]
 };
 
 /*
@@ -31,9 +31,10 @@ const upload = multer({
 });
 
 /*
-POSTER RESIZE
+AUTO RESIZE POSTER (TikTok square format)
 */
 async function processPoster(file) {
+
   if (!file) return null;
 
   const postersDir = path.join(
@@ -46,9 +47,11 @@ async function processPoster(file) {
   }
 
   const filename =
-    Date.now() + "-" + file.originalname.replace(/\s+/g, "_");
+    Date.now() + "-" +
+    file.originalname.replace(/\s+/g, "_");
 
-  const outputPath = path.join(postersDir, filename);
+  const outputPath =
+    path.join(postersDir, filename);
 
   await sharp(file.path)
     .resize(1080, 1080, { fit: "cover" })
@@ -79,7 +82,7 @@ app.use(
 app.use(express.urlencoded({ extended: true }));
 
 /*
-SESSION
+SESSION CONFIG
 */
 app.set("trust proxy", 1);
 
@@ -87,11 +90,7 @@ app.use(
   session({
     secret: "flame-force-secret",
     resave: false,
-    saveUninitialized: false,
-    cookie: {
-      secure: true,
-      sameSite: "none"
-    }
+    saveUninitialized: false
   })
 );
 
@@ -118,10 +117,12 @@ passport.serializeUser((u, d) => d(null, u));
 passport.deserializeUser((o, d) => d(null, o));
 
 /*
-SAFE ROLE LOOKUP
+ROLE LOOKUP
 */
 async function getUserRoleLevel(req) {
+
   try {
+
     const response = await axios.get(
       `https://discord.com/api/v10/guilds/${process.env.GUILD_ID}/members/${req.user.id}`,
       {
@@ -145,57 +146,13 @@ async function getUserRoleLevel(req) {
     return "none";
 
   } catch (err) {
+
     console.log("Role lookup failed:", err.message);
+
     return "none";
-  }
-}
-
-/*
-LOAD AGENCY MEMBERS FROM DISCORD
-*/
-async function getAgencyMembers() {
-
-  try {
-
-    const response = await axios.get(
-      `https://discord.com/api/v10/guilds/${process.env.GUILD_ID}/members?limit=1000`,
-      {
-        headers: {
-          Authorization: `Bot ${process.env.TOKEN.trim()}`
-        }
-      }
-    );
-
-    const agencyRoleIDs = [
-      ...config.ownerRoles,
-      ...config.adminRoles,
-      ...config.memberRoles
-    ];
-
-    return response.data
-      .filter(member =>
-        member.roles.some(role =>
-          agencyRoleIDs.includes(role)
-        )
-      )
-      .map(member => ({
-        id: member.user.id,
-        name:
-          member.nick ||
-          member.user.global_name ||
-          member.user.username
-      }));
-
-  } catch (err) {
-
-    console.log(
-      "Failed loading agency members:",
-      err.message
-    );
-
-    return [];
 
   }
+
 }
 
 /*
@@ -206,7 +163,8 @@ async function checkAuth(req, res, next) {
   if (!req.isAuthenticated())
     return res.redirect("/");
 
-  req.roleLevel = await getUserRoleLevel(req);
+  req.roleLevel =
+    await getUserRoleLevel(req);
 
   if (req.roleLevel === "none")
     return res.send("Access denied");
@@ -218,49 +176,57 @@ async function checkAuth(req, res, next) {
 /*
 LOGIN ROUTES
 */
-app.get("/", (req, res) => res.render("login"));
+app.get("/", (req, res) =>
+  res.render("login"));
 
-app.get("/login", passport.authenticate("discord"));
+app.get("/login",
+  passport.authenticate("discord"));
 
 app.get(
   "/auth/callback",
   passport.authenticate("discord", {
     failureRedirect: "/"
   }),
-  (req, res) => res.redirect("/dashboard")
+  (req, res) =>
+    res.redirect("/dashboard")
 );
 
 app.get("/logout", (req, res) =>
-  req.logout(() => res.redirect("/"))
+  req.logout(() =>
+    res.redirect("/")
+  )
 );
 
 /*
-DASHBOARD
+DASHBOARD VIEW
 */
-app.get("/dashboard", checkAuth, async (req, res) => {
+app.get("/dashboard",
+  checkAuth,
+  async (req, res) => {
 
-  const agencyMembers = await getAgencyMembers();
+  try {
 
-  db.all(
-    "SELECT * FROM battles ORDER BY date, time",
-    [],
-    (err, battles) => {
+    const result =
+      await db.query(
+        "SELECT * FROM battles ORDER BY date, time"
+      );
 
-      if (err) return res.send("Database error");
+    res.render("dashboard", {
+      battles: result.rows,
+      roleLevel: req.roleLevel
+    });
 
-      res.render("dashboard", {
-        battles,
-        agencyMembers,
-        roleLevel: req.roleLevel
-      });
+  } catch (err) {
 
-    }
-  );
+    console.error(err);
+    res.send("Database error");
+
+  }
 
 });
 
 /*
-CREATE BATTLE + POST TO DISCORD
+CREATE BATTLE
 */
 app.post(
   "/create",
@@ -268,89 +234,121 @@ app.post(
   upload.single("poster"),
   async (req, res) => {
 
-    if (!["owner", "admin"].includes(req.roleLevel))
+    if (!["owner", "admin"]
+      .includes(req.roleLevel))
       return res.send("Permission denied");
 
-    const { host, opponent, date, time, liveLink } = req.body;
+    const {
+      host,
+      opponent,
+      date,
+      time,
+      liveLink
+    } = req.body;
 
-    const poster = await processPoster(req.file);
+    const poster =
+      await processPoster(req.file);
 
-    db.run(
-      `INSERT INTO battles
-       (host, opponent, date, time, poster, liveLink)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [host, opponent, date, time, poster, liveLink],
-      async () => {
+    try {
 
-        try {
+      await db.query(
+        `INSERT INTO battles
+        (host, opponent, date, time, poster, liveLink)
+        VALUES ($1,$2,$3,$4,$5,$6)`,
+        [
+          host,
+          opponent,
+          date,
+          time,
+          poster,
+          liveLink
+        ]
+      );
 
-          const form = new FormData();
+      console.log("Battle saved successfully");
 
-          const messageText =
-            `🔥 **Flame Force Battle Scheduled!** 🔥\n\n` +
-            `⚔ <@${host}> vs <@${opponent}>\n` +
-            `📅 ${date} ⏰ ${time}\n\n` +
-            (liveLink
-              ? `🔗 Watch here:\n${liveLink}`
-              : "");
+    } catch (err) {
 
-          form.append("content", messageText);
+      console.error("Insert failed:", err);
 
-          if (poster) {
+      return res.send("Database insert failed");
 
-            const posterPath = path.join(
-              process.cwd(),
-              "dashboard/public",
-              poster
-            );
+    }
 
-            form.append(
-              "file",
-              fs.createReadStream(posterPath)
-            );
+    /*
+    POST TO DISCORD
+    */
+    try {
 
-          }
+      const form =
+        new FormData();
 
-          await axios.post(
-            `https://discord.com/api/v10/channels/${process.env.BATTLE_CHANNEL_ID}/messages`,
-            form,
-            {
-              headers: {
-                Authorization: `Bot ${process.env.TOKEN}`,
-                ...form.getHeaders()
-              }
-            }
+      const messageText =
+        `🔥 **Flame Force Battle Scheduled!** 🔥\n\n` +
+        `⚔ ${host} vs ${opponent}\n` +
+        `📅 ${date} ⏰ ${time}\n\n` +
+        (liveLink ?
+          `🔗 ${liveLink}` : "");
+
+      form.append("content", messageText);
+
+      if (poster) {
+
+        const posterPath =
+          path.join(
+            process.cwd(),
+            "dashboard/public",
+            poster
           );
 
-          console.log("Discord announcement posted");
-
-        } catch (err) {
-
-          console.log(
-            "Discord post failed:",
-            err.message
-          );
-
-        }
-
-        res.redirect("/dashboard");
+        form.append(
+          "file",
+          fs.createReadStream(posterPath)
+        );
 
       }
-    );
 
-  }
-);
+      await axios.post(
+        `https://discord.com/api/v10/channels/${process.env.BATTLE_CHANNEL_ID}/messages`,
+        form,
+        {
+          headers: {
+            Authorization:
+              `Bot ${process.env.TOKEN}`,
+            ...form.getHeaders()
+          }
+        }
+      );
+
+      console.log("📢 Posted to Discord");
+
+    } catch (err) {
+
+      console.log(
+        "Discord post failed:",
+        err.message
+      );
+
+    }
+
+    res.redirect("/dashboard");
+
+});
 
 /*
 DELETE BATTLE
 */
-app.post("/delete/:id", checkAuth, (req, res) => {
+app.post(
+  "/delete/:id",
+  checkAuth,
+  async (req, res) => {
 
-  if (!["owner", "admin"].includes(req.roleLevel))
+  if (!["owner", "admin"]
+    .includes(req.roleLevel))
     return res.send("Permission denied");
 
-  db.run(
-    "DELETE FROM battles WHERE id=?",
+  await db.query(
+    "DELETE FROM battles WHERE id=$1",
     [req.params.id]
   );
 
@@ -359,29 +357,30 @@ app.post("/delete/:id", checkAuth, (req, res) => {
 });
 
 /*
-CALENDAR
+CALENDAR VIEW
 */
-app.get("/calendar", (req, res) => {
+app.get("/calendar",
+  async (req, res) => {
 
-  db.all(
-    "SELECT * FROM battles ORDER BY date, time",
-    [],
-    (err, battles) => {
+  const result =
+    await db.query(
+      "SELECT * FROM battles ORDER BY date, time"
+    );
 
-      if (err) return res.send("Database error");
-
-      res.render("calendar", { battles });
-
-    }
-  );
+  res.render("calendar", {
+    battles: result.rows
+  });
 
 });
 
 /*
 START SERVER
 */
-const PORT = process.env.PORT || 8080;
+const PORT =
+  process.env.PORT || 8080;
 
 app.listen(PORT, () =>
-  console.log(`🔥 Flame Force dashboard running on ${PORT}`)
+  console.log(
+    `🔥 Flame Force dashboard running on ${PORT}`
+  )
 );
