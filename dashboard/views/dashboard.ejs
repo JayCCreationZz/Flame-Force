@@ -1,87 +1,182 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
 <title>Flame Force Dashboard</title>
 
-<link rel="icon" type="image/png" href="/favicon.png">
-<script src="https://cdn.tailwindcss.com"></script>
+<link rel="icon" href="/favicon.png">
 
 <style>
-.logo-glow {
-    animation: emberGlow 2.5s ease-in-out infinite alternate;
+
+body {
+    font-family: Arial;
+    background:#0e0e0e;
+    color:white;
+    margin:0;
 }
 
-@keyframes emberGlow {
-    from {
-        filter: drop-shadow(0 0 6px #ff7a00)
-                drop-shadow(0 0 12px #ff3c00);
-    }
-    to {
-        filter: drop-shadow(0 0 12px #ffae00)
-                drop-shadow(0 0 24px #ff4500);
-    }
+/* HEADER */
+
+header {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    background:#111;
+    padding:14px 30px;
+    border-bottom:2px solid #ff6600;
+    position:relative;
+    z-index:1000;
 }
+
+/* ANIMATED EMBLEM */
+
+.logo img {
+    height:48px;
+    animation: flameGlow 2.5s infinite alternate ease-in-out;
+}
+
+@keyframes flameGlow {
+
+0% {
+    filter:
+        drop-shadow(0 0 4px #ff6600)
+        drop-shadow(0 0 8px #ff3300);
+}
+
+100% {
+    filter:
+        drop-shadow(0 0 10px #ffaa00)
+        drop-shadow(0 0 22px #ff2200);
+}
+
+}
+
+/* NAV */
+
+.nav a {
+    margin-left:20px;
+    text-decoration:none;
+    color:#ff6600;
+    font-weight:bold;
+}
+
+/* PAGE WRAPPER */
+
+.container {
+    padding:30px;
+}
+
+/* CREATE PANEL */
+
+.form-box {
+    background:#1a1a1a;
+    padding:25px;
+    border-radius:12px;
+    margin-bottom:30px;
+    box-shadow:0 0 12px rgba(255,120,0,.2);
+}
+
+input, select {
+
+    width:100%;
+    padding:10px;
+    margin-top:8px;
+    margin-bottom:16px;
+    border:none;
+    border-radius:6px;
+}
+
+/* BUTTONS */
+
+button {
+
+    padding:10px 16px;
+    border:none;
+    border-radius:6px;
+    cursor:pointer;
+    font-weight:bold;
+}
+
+.create-btn {
+    background:#ff6600;
+    color:white;
+}
+
+.edit-btn {
+    background:#ffaa00;
+    margin-right:8px;
+}
+
+.delete-btn {
+    background:#ff3333;
+    color:white;
+}
+
+/* CARD */
+
+.card {
+
+    background:#1a1a1a;
+    padding:20px;
+    border-radius:12px;
+    margin-bottom:20px;
+
+    box-shadow:
+        0 0 12px rgba(255,120,0,.15);
+}
+
+/* POSTER */
+
+.poster {
+
+    width:180px;
+    border-radius:10px;
+    margin-top:10px;
+
+    box-shadow:
+        0 0 10px rgba(255,120,0,.4);
+}
+
+/* META */
+
+.meta {
+
+    opacity:.7;
+    font-size:13px;
+}
+
 </style>
-
 </head>
 
-<body class="bg-gray-900 text-white min-h-screen">
+<body>
 
+<header>
 
-<!-- HEADER -->
-<header class="flex justify-between items-center px-8 py-4 bg-gray-800 shadow-lg">
-
-<div class="flex items-center gap-4">
-
-<img src="/logo.png"
-class="h-12 w-12 logo-glow">
-
-<h1 class="text-2xl font-bold tracking-wide">
-🔥 Flame Force Battle Dashboard
-</h1>
-
+<div class="logo">
+<img src="/logo.png">
 </div>
 
-<div class="flex gap-4">
-
-<a href="/calendar"
-class="bg-orange-600 px-4 py-2 rounded-lg hover:bg-orange-700">
-Calendar
-</a>
-
-<a href="/logout"
-class="bg-gray-700 px-4 py-2 rounded-lg hover:bg-gray-600">
-Logout
-</a>
-
+<div class="nav">
+<a href="/dashboard">Dashboard</a>
+<a href="/calendar">Calendar</a>
+<a href="/logout">Logout</a>
 </div>
 
 </header>
 
+<div class="container">
 
-
-<!-- CREATE BATTLE FORM -->
 <% if (roleLevel === "owner" || roleLevel === "admin") { %>
 
-<section class="p-8">
+<div class="form-box">
 
-<h2 class="text-xl font-semibold mb-4">
-Create New Battle
-</h2>
+<h2>Create Battle</h2>
 
-<form action="/create"
-method="POST"
-enctype="multipart/form-data"
-class="grid md:grid-cols-3 gap-4">
+<form action="/create" method="POST" enctype="multipart/form-data">
 
+<label>Host Creator (Agency)</label>
 
-<!-- HOST DROPDOWN -->
-<select name="host"
-required
-class="p-3 rounded bg-gray-800">
-
-<option value="">Select Host</option>
+<select name="host" required>
 
 <% agencyMembers.forEach(member => { %>
 
@@ -94,49 +189,31 @@ class="p-3 rounded bg-gray-800">
 </select>
 
 
-<!-- OPPONENT DROPDOWN -->
-<select name="opponent"
-required
-class="p-3 rounded bg-gray-800">
+<label>Opponent (External or Agency)</label>
 
-<option value="">Select Opponent</option>
-
-<% agencyMembers.forEach(member => { %>
-
-<option value="<%= member.id %>">
-<%= member.name %>
-</option>
-
-<% }) %>
-
-</select>
+<input
+type="text"
+name="opponent"
+placeholder="Enter opponent TikTok username"
+required>
 
 
-<input type="date"
-name="date"
-required
-class="p-3 rounded bg-gray-800">
+<label>Date</label>
+<input type="date" name="date" required>
+
+<label>Time</label>
+<input type="time" name="time" required>
 
 
-<input type="time"
-name="time"
-required
-class="p-3 rounded bg-gray-800">
+<label>Live Link</label>
+<input type="text" name="liveLink">
 
 
-<input name="liveLink"
-placeholder="Live Link (optional)"
-class="p-3 rounded bg-gray-800">
+<label>Poster Upload</label>
+<input type="file" name="poster">
 
 
-<input type="file"
-name="poster"
-accept="image/*"
-class="p-3 rounded bg-gray-800">
-
-
-<button type="submit"
-class="bg-orange-600 hover:bg-orange-700 rounded px-6 py-3">
+<button class="create-btn">
 
 Create Battle
 
@@ -144,71 +221,117 @@ Create Battle
 
 </form>
 
-</section>
+</div>
 
 <% } %>
 
 
+<h2>Scheduled Battles</h2>
 
-<!-- BATTLE GRID -->
-<section class="px-8 pb-10">
-
-<h2 class="text-xl font-semibold mb-6">
-Scheduled Battles
-</h2>
-
-<div class="grid md:grid-cols-3 gap-6">
 
 <% battles.forEach(battle => { %>
 
-<div class="bg-gray-800 rounded-xl shadow-lg p-4 hover:shadow-orange-500/20 transition">
+<div class="card">
+
+<form
+action="/edit/<%= battle.id %>"
+method="POST"
+enctype="multipart/form-data">
+
+<label>Host</label>
+
+<select name="host">
+
+<% agencyMembers.forEach(member => { %>
+
+<option
+value="<%= member.id %>"
+<%= member.id == battle.host ? "selected" : "" %>>
+
+<%= member.name %>
+
+</option>
+
+<% }) %>
+
+</select>
+
+
+<label>Opponent</label>
+
+<input
+type="text"
+name="opponent"
+value="<%= battle.opponent %>">
+
+
+<label>Date</label>
+
+<input
+type="date"
+name="date"
+value="<%= battle.date %>">
+
+
+<label>Time</label>
+
+<input
+type="time"
+name="time"
+value="<%= battle.time %>">
+
+
+<label>Live Link</label>
+
+<input
+type="text"
+name="liveLink"
+value="<%= battle.liveLink || "" %>">
+
+
+<label>Replace Poster</label>
+
+<input type="file" name="poster">
+
+
+<div class="meta">
+
+Battle ID:
+<%= battle.id %>
+
+</div>
+
 
 <% if (battle.poster) { %>
 
-<img src="<%= battle.poster %>"
-class="rounded-lg mb-4 w-full object-cover">
+<img
+class="poster"
+src="<%= battle.poster %>">
 
 <% } %>
 
 
-<h3 class="text-lg font-bold">
-
-⚔
-<%= agencyMembers.find(m => m.id === battle.host)?.name || battle.host %>
-vs
-<%= agencyMembers.find(m => m.id === battle.opponent)?.name || battle.opponent %>
-
-</h3>
-
-
-<p class="text-gray-400 mb-2">
-
-📅 <%= battle.date %> ⏰ <%= battle.time %>
-
-</p>
-
-
-<% if (battle.liveLink) { %>
-
-<a href="<%= battle.liveLink %>"
-target="_blank"
-class="text-orange-400 underline block mb-3">
-
-Watch Battle
-
-</a>
-
-<% } %>
-
+<br><br>
 
 <% if (roleLevel === "owner" || roleLevel === "admin") { %>
 
-<form action="/delete/<%= battle.id %>"
+<button class="edit-btn">
+
+Save Changes
+
+</button>
+
+</form>
+
+
+<form
+style="display:inline"
+action="/delete/<%= battle.id %>"
 method="POST">
 
-<button class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded">
+<button class="delete-btn">
 
-Delete Battle
+Delete
 
 </button>
 
@@ -221,8 +344,6 @@ Delete Battle
 <% }) %>
 
 </div>
-
-</section>
 
 </body>
 </html>
