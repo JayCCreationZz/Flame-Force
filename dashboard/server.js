@@ -18,9 +18,9 @@ ROLE CONFIG (Flame Force)
 Replace only if roles change later
 */
 const config = {
-  ownerRoles: ["1465436891238367284"],
-  adminRoles: ["1493636042354331779"],
-  memberRoles: ["1458157807361720426"]
+  ownerRoles: ["1439255505053683804"],
+  adminRoles: ["1471132938467803322"],
+  memberRoles: ["1439256200658157588"]
 };
 
 /*
