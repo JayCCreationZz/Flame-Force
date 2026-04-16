@@ -14,22 +14,19 @@ const db = require("../database");
 const app = express();
 
 /*
-ROLE CONFIG (Dashboard access control)
+ROLE IDS (Flame Force)
 */
-const config = {
-  ownerRoles: ["1465436891238367284"],
-  adminRoles: ["1493636042354331779"],
-  memberRoles: ["1458157807361720426"]
-};
+const OWNER_ROLE = "1465436891238367284";
+const ADMIN_ROLE = "1493636042354331779";
+const MEMBER_ROLE = "1458157807361720426";
 
 /*
-CREATOR ROLE FILTER (Dropdown list)
-Only these appear in selector
+CREATOR ROLES (dropdown list)
 */
-const creatorRoles = [
-  "1458157807361720426", // Spark
-  "1493636042354331779", // Blaze
-  "1465436891238367284"  // Owner
+const CREATOR_ROLES = [
+  OWNER_ROLE,
+  ADMIN_ROLE,
+  MEMBER_ROLE
 ];
 
 /*
@@ -40,7 +37,7 @@ const upload = multer({
 });
 
 /*
-AUTO RESIZE POSTER TO 1080x1080
+AUTO RESIZE POSTER
 */
 async function processPoster(file) {
 
@@ -126,7 +123,7 @@ passport.serializeUser((u, d) => d(null, u));
 passport.deserializeUser((o, d) => d(null, o));
 
 /*
-ROLE LOOKUP
+ROLE LOOKUP (ROBUST VERSION)
 */
 async function getUserRoleLevel(req) {
 
@@ -136,27 +133,34 @@ async function getUserRoleLevel(req) {
       `https://discord.com/api/v10/guilds/${process.env.GUILD_ID}/members/${req.user.id}`,
       {
         headers: {
-          Authorization: `Bot ${process.env.TOKEN}`
+          Authorization: `Bot ${process.env.TOKEN.trim()}`
         }
       }
     );
 
-    const roles = response.data.roles;
+    const roles = response.data.roles || [];
 
-    if (roles.some(r => config.ownerRoles.includes(r)))
+    console.log("User:", req.user.id);
+    console.log("Roles detected:", roles);
+
+    if (roles.includes(OWNER_ROLE))
       return "owner";
 
-    if (roles.some(r => config.adminRoles.includes(r)))
+    if (roles.includes(ADMIN_ROLE))
       return "admin";
 
-    if (roles.some(r => config.memberRoles.includes(r)))
+    if (roles.includes(MEMBER_ROLE))
       return "member";
 
     return "none";
 
   } catch (err) {
 
-    console.log("Role lookup failed:", err.message);
+    console.log(
+      "Role lookup error:",
+      err.response?.data || err.message
+    );
+
     return "none";
 
   }
@@ -182,7 +186,7 @@ async function checkAuth(req, res, next) {
 }
 
 /*
-FETCH CREATOR LIST FOR DROPDOWN
+FETCH CREATOR LIST
 */
 async function getAgencyMembers() {
 
@@ -200,7 +204,7 @@ async function getAgencyMembers() {
     return response.data
       .filter(member =>
         member.roles.some(role =>
-          creatorRoles.includes(role)
+          CREATOR_ROLES.includes(role)
         )
       )
       .map(member => ({
@@ -210,7 +214,10 @@ async function getAgencyMembers() {
 
   } catch (err) {
 
-    console.log("Agency member fetch failed:", err.message);
+    console.log(
+      "Creator fetch failed:",
+      err.message
+    );
 
     return [];
 
@@ -225,7 +232,8 @@ app.get("/", (req, res) =>
   res.render("login")
 );
 
-app.get("/login",
+app.get(
+  "/login",
   passport.authenticate("discord")
 );
 
@@ -245,39 +253,79 @@ app.get("/logout", (req, res) =>
 );
 
 /*
-DASHBOARD
+ROLE DEBUG ROUTE
 */
-app.get("/dashboard", checkAuth, async (req, res) => {
+app.get("/debug-roles", async (req, res) => {
+
+  if (!req.isAuthenticated())
+    return res.send("Not logged in");
 
   try {
 
-    const result =
-      await db.query(
-        "SELECT * FROM battles ORDER BY date, time"
-      );
+    const response = await axios.get(
+      `https://discord.com/api/v10/guilds/${process.env.GUILD_ID}/members/${req.user.id}`,
+      {
+        headers: {
+          Authorization: `Bot ${process.env.TOKEN}`
+        }
+      }
+    );
 
-    const agencyMembers =
-      await getAgencyMembers();
-
-    res.render("dashboard", {
-      battles: result.rows,
-      roleLevel: req.roleLevel,
-      agencyMembers
-    });
+    res.json(response.data.roles);
 
   } catch (err) {
 
-    console.log("Dashboard load error:", err.message);
-
-    res.render("dashboard", {
-      battles: [],
-      roleLevel: req.roleLevel,
-      agencyMembers: []
+    res.json({
+      error:
+        err.response?.data ||
+        err.message
     });
 
   }
 
 });
+
+/*
+DASHBOARD
+*/
+app.get(
+  "/dashboard",
+  checkAuth,
+  async (req, res) => {
+
+    try {
+
+      const result =
+        await db.query(
+          "SELECT * FROM battles ORDER BY date, time"
+        );
+
+      const agencyMembers =
+        await getAgencyMembers();
+
+      res.render("dashboard", {
+        battles: result.rows,
+        roleLevel: req.roleLevel,
+        agencyMembers
+      });
+
+    } catch (err) {
+
+      console.log(
+        "Dashboard error:",
+        err.message
+      );
+
+      res.render("dashboard", {
+        battles: [],
+        roleLevel: req.roleLevel,
+        agencyMembers: []
+      });
+
+    }
+
+  }
+);
 
 /*
 CREATE BATTLE
@@ -288,7 +336,8 @@ app.post(
   upload.single("poster"),
   async (req, res) => {
 
-    if (!["owner", "admin"].includes(req.roleLevel))
+    if (!["owner", "admin"]
+      .includes(req.roleLevel))
       return res.send("Permission denied");
 
     const {
@@ -306,7 +355,14 @@ app.post(
       `INSERT INTO battles
       (host, opponent, date, time, poster, liveLink)
       VALUES ($1,$2,$3,$4,$5,$6)`,
-      [host, opponent, date, time, poster, liveLink]
+      [
+        host,
+        opponent,
+        date,
+        time,
+        poster,
+        liveLink
+      ]
     );
 
     /*
@@ -314,7 +370,8 @@ app.post(
     */
     try {
 
-      const form = new FormData();
+      const form =
+        new FormData();
 
       const message =
         `🔥 **Flame Force Battle Scheduled!** 🔥\n\n` +
@@ -352,50 +409,64 @@ app.post(
         }
       );
 
-      console.log("📢 Posted to Discord");
+      console.log(
+        "📢 Posted to Discord"
+      );
 
     } catch (err) {
 
-      console.log("Discord post failed:", err.message);
+      console.log(
+        "Discord post failed:",
+        err.message
+      );
 
     }
 
     res.redirect("/dashboard");
 
-});
+  }
+);
 
 /*
 DELETE BATTLE
 */
-app.post("/delete/:id", checkAuth, async (req, res) => {
+app.post(
+  "/delete/:id",
+  checkAuth,
+  async (req, res) => {
 
-  if (!["owner", "admin"].includes(req.roleLevel))
-    return res.send("Permission denied");
+    if (!["owner", "admin"]
+      .includes(req.roleLevel))
+      return res.send("Permission denied");
 
-  await db.query(
-    "DELETE FROM battles WHERE id=$1",
-    [req.params.id]
-  );
-
-  res.redirect("/dashboard");
-
-});
-
-/*
-CALENDAR VIEW
-*/
-app.get("/calendar", async (req, res) => {
-
-  const result =
     await db.query(
-      "SELECT * FROM battles ORDER BY date, time"
+      "DELETE FROM battles WHERE id=$1",
+      [req.params.id]
     );
 
-  res.render("calendar", {
-    battles: result.rows
-  });
+    res.redirect("/dashboard");
 
-});
+  }
+);
+
+/*
+CALENDAR
+*/
+app.get(
+  "/calendar",
+  async (req, res) => {
+
+    const result =
+      await db.query(
+        "SELECT * FROM battles ORDER BY date, time"
+      );
+
+    res.render("calendar", {
+      battles: result.rows
+    });
+
+  }
+);
 
 /*
 START SERVER
