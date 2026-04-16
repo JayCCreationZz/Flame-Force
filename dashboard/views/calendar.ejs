@@ -64,11 +64,13 @@ max-width:1300px;
 margin:auto;
 }
 
-/* TITLE */
+/* SECTION TITLE */
 
 .section-title{
-margin-bottom:24px;
+margin:40px 0 20px 0;
 color:#ffaa00;
+border-bottom:1px solid #333;
+padding-bottom:6px;
 }
 
 /* GRID */
@@ -142,11 +144,41 @@ text-decoration:none;
 
 <div class="wrapper">
 
-<h2 class="section-title">Upcoming Battles</h2>
+<%
+const today = new Date();
+today.setHours(0,0,0,0);
+
+const tomorrow = new Date(today);
+tomorrow.setDate(today.getDate()+1);
+
+const weekAhead = new Date(today);
+weekAhead.setDate(today.getDate()+7);
+
+function groupBattles(rangeStart, rangeEnd){
+return battles.filter(b=>{
+const d = new Date(b.date);
+return d >= rangeStart && d < rangeEnd;
+});
+}
+
+const todayBattles = groupBattles(today,tomorrow);
+const tomorrowBattles = groupBattles(tomorrow,new Date(tomorrow.getTime()+86400000));
+const weekBattles = groupBattles(new Date(tomorrow.getTime()+86400000),weekAhead);
+const laterBattles = battles.filter(b=>{
+const d = new Date(b.date);
+return d >= weekAhead;
+});
+
+function renderSection(title,list){
+%>
+
+<% if(list.length){ %>
+
+<h2 class="section-title"><%= title %></h2>
 
 <div class="calendar-grid">
 
-<% battles.forEach(battle => { %>
+<% list.forEach(battle=>{ %>
 
 <div class="card">
 
@@ -188,6 +220,17 @@ Watch Live 🔴
 <% }) %>
 
 </div>
+
+<% } %>
+
+<%
+}
+%>
+
+<% renderSection("🔴 Today",todayBattles); %>
+<% renderSection("🟠 Tomorrow",tomorrowBattles); %>
+<% renderSection("🟡 This Week",weekBattles); %>
+<% renderSection("⚫ Later Battles",laterBattles); %>
 
 </div>
 
