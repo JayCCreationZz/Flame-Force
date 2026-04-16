@@ -1,87 +1,77 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Flame Force Battle Calendar</title>
+<title>Flame Force Calendar</title>
+
+<link rel="icon" type="image/png" href="/favicon.png">
+
 <script src="https://cdn.tailwindcss.com"></script>
+
 </head>
 
 <body class="bg-gray-900 text-white min-h-screen">
 
-<div class="max-w-7xl mx-auto p-6">
+<header class="flex justify-between items-center px-8 py-4 bg-gray-800 shadow-lg">
 
-<!-- HEADER -->
+<div class="flex items-center gap-4">
 
-<h1 class="text-3xl font-bold text-orange-400 mb-6">
-🔥 Flame Force Weekly Battle Schedule
+<img src="/logo.png"
+class="h-12 w-12">
+
+<h1 class="text-2xl font-bold">
+🔥 Flame Force Battle Calendar
 </h1>
 
-
-<!-- WEEKLY GRID -->
-
-<div class="grid grid-cols-7 gap-4">
-
-<% Object.keys(week).forEach(day => { %>
-
-<div class="bg-gray-800 rounded-xl p-4 shadow">
-
-<h2 class="text-orange-400 font-semibold mb-3">
-<%= day %>
-</h2>
-
-
-<% if (week[day].length === 0) { %>
-
-<p class="text-gray-500 text-sm">
-No battles scheduled
-</p>
-
-<% } %>
-
-
-<% week[day].forEach(battle => { %>
-
-<div class="bg-gray-700 rounded p-3 mb-3">
-
-<!-- TIME -->
-
-<div class="font-bold text-sm">
-<%= battle.time %>
 </div>
 
+<a href="/dashboard"
+class="bg-orange-600 px-4 py-2 rounded hover:bg-orange-700">
 
-<!-- MATCHUP -->
+Back to Dashboard
 
-<div class="text-sm mb-2">
-<%= battle.host %> vs <%= battle.opponent %>
-</div>
+</a>
+
+</header>
 
 
-<!-- POSTER -->
+<section class="p-8">
+
+<div class="grid md:grid-cols-3 gap-6">
+
+<% battles.forEach(battle => { %>
+
+<div class="bg-gray-800 rounded-xl shadow-lg p-4">
 
 <% if (battle.poster) { %>
 
-<a href="<%= battle.poster %>" target="_blank">
-
-<img
-src="<%= battle.poster %>"
-class="rounded-lg mt-2">
-
-</a>
+<img src="<%= battle.poster %>"
+class="rounded-lg mb-4 w-full object-cover">
 
 <% } %>
 
+<h3 class="text-lg font-bold">
 
-<!-- LIVE BUTTON -->
+⚔
+<%= agencyMembers.find(m => m.id === battle.host)?.name || battle.host %>
+vs
+<%= agencyMembers.find(m => m.id === battle.opponent)?.name || battle.opponent %>
+
+</h3>
+
+<p class="text-gray-400 mb-2">
+
+📅 <%= battle.date %> ⏰ <%= battle.time %>
+
+</p>
 
 <% if (battle.liveLink) { %>
 
-<a
-href="<%= battle.liveLink %>"
+<a href="<%= battle.liveLink %>"
 target="_blank"
-class="block mt-3 bg-green-600 text-center py-1 rounded hover:bg-green-700">
+class="text-orange-400 underline">
 
-▶ Join Live
+Watch Battle
 
 </a>
 
@@ -93,11 +83,7 @@ class="block mt-3 bg-green-600 text-center py-1 rounded hover:bg-green-700">
 
 </div>
 
-<% }) %>
-
-</div>
-
-</div>
+</section>
 
 </body>
 </html>
