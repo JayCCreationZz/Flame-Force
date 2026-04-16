@@ -1,18 +1,10 @@
 const { Pool } = require("pg");
 
-/*
-PostgreSQL connection pool (Railway provides DATABASE_URL automatically)
-*/
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false
-  }
+  ssl: { rejectUnauthorized: false }
 });
 
-/*
-Create battles table if missing
-*/
 async function initDB() {
 
   try {
@@ -24,12 +16,16 @@ async function initDB() {
         opponent TEXT,
         date TEXT,
         time TEXT,
-        poster TEXT,
-        liveLink TEXT
+        posterData BYTEA,
+        liveLink TEXT,
+        managerGifting BOOLEAN DEFAULT false,
+        adultOnly BOOLEAN DEFAULT false,
+        powerUps BOOLEAN DEFAULT true,
+        noHammers BOOLEAN DEFAULT false
       )
     `);
 
-    console.log("✅ PostgreSQL connected & table ready");
+    console.log("✅ PostgreSQL connected & schema ready");
 
   } catch (err) {
 
