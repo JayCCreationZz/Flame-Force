@@ -9,6 +9,9 @@ async function initDB() {
 
   try {
 
+    /*
+    Ensure base table exists
+    */
     await pool.query(`
       CREATE TABLE IF NOT EXISTS battles (
         id SERIAL PRIMARY KEY,
@@ -16,18 +19,44 @@ async function initDB() {
         opponent TEXT,
         date TEXT,
         time TEXT,
-        posterData BYTEA,
-        liveLink TEXT,
-        managerGifting BOOLEAN DEFAULT false,
-        adultOnly BOOLEAN DEFAULT false,
-        powerUps BOOLEAN DEFAULT true,
-        noHammers BOOLEAN DEFAULT false
+        liveLink TEXT
       )
     `);
 
-    console.log("✅ PostgreSQL connected & schema ready");
+    /*
+    ADD NEW COLUMNS SAFELY
+    */
 
-  } catch (err) {
+    await pool.query(`
+      ALTER TABLE battles
+      ADD COLUMN IF NOT EXISTS posterData BYTEA
+    `);
+
+    await pool.query(`
+      ALTER TABLE battles
+      ADD COLUMN IF NOT EXISTS managerGifting BOOLEAN DEFAULT false
+    `);
+
+    await pool.query(`
+      ALTER TABLE battles
+      ADD COLUMN IF NOT EXISTS adultOnly BOOLEAN DEFAULT false
+    `);
+
+    await pool.query(`
+      ALTER TABLE battles
+      ADD COLUMN IF NOT EXISTS powerUps BOOLEAN DEFAULT true
+    `);
+
+    await pool.query(`
+      ALTER TABLE battles
+      ADD COLUMN IF NOT EXISTS noHammers BOOLEAN DEFAULT false
+    `);
+
+    console.log("✅ PostgreSQL schema synced successfully");
+
+  }
+
+  catch (err) {
 
     console.error("❌ PostgreSQL init error:", err);
 
