@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Flame Force Control Panel</title>
+<title>Flame Force Dashboard</title>
 
 <link rel="icon" href="/favicon.png">
 
@@ -11,7 +11,7 @@
 body{
 margin:0;
 font-family:Segoe UI,Arial;
-background:linear-gradient(180deg,#0b0b0b,#151515);
+background:#0e0e0e;
 color:white;
 }
 
@@ -22,35 +22,22 @@ display:flex;
 justify-content:space-between;
 align-items:center;
 padding:18px 40px;
-background:#0f0f0f;
+background:#111;
 border-bottom:2px solid #ff6600;
-position:sticky;
-top:0;
-z-index:999;
-}
-
-/* LOGO */
-
-.logo{
-display:flex;
-align-items:center;
-gap:12px;
 }
 
 .logo img{
-height:48px;
+height:52px;
 animation:glowPulse 2.5s infinite alternate ease-in-out;
 }
 
 @keyframes glowPulse{
-0%{filter:drop-shadow(0 0 6px #ff6600);}
+0%{filter:drop-shadow(0 0 8px #ff6600);}
 100%{filter:drop-shadow(0 0 22px #ffaa00);}
 }
 
-/* NAV */
-
 .nav a{
-margin-left:24px;
+margin-left:22px;
 color:#ff6600;
 font-weight:600;
 text-decoration:none;
@@ -64,53 +51,50 @@ max-width:1300px;
 margin:auto;
 }
 
-/* PANEL */
+/* FORM */
 
-.panel{
-background:#181818;
-padding:26px;
+.form-box{
+background:#1a1a1a;
+padding:28px;
 border-radius:14px;
-box-shadow:0 0 25px rgba(255,110,0,.15);
-margin-bottom:40px;
+margin-bottom:50px;
+box-shadow:0 0 18px rgba(255,120,0,.15);
 }
 
-/* FORM GRID */
-
-.form-grid{
-display:grid;
-grid-template-columns:1fr 1fr;
-gap:18px;
+.form-box h2{
+margin-top:0;
+color:#ffaa00;
 }
 
-/* INPUTS */
-
-input,select{
+.form-box input,
+.form-box select{
 width:100%;
-padding:12px;
+padding:10px;
+margin-top:8px;
+margin-bottom:18px;
+border-radius:6px;
 border:none;
-border-radius:8px;
-background:#101010;
+background:#0f0f0f;
 color:white;
 }
-
-/* BUTTON */
 
 button{
+background:#ff6600;
 border:none;
-padding:12px 20px;
-border-radius:8px;
-cursor:pointer;
-font-weight:600;
-}
-
-.create-btn{
-background:linear-gradient(90deg,#ff6600,#ff3300);
+padding:10px 16px;
 color:white;
+font-weight:bold;
+border-radius:6px;
+cursor:pointer;
 }
 
-/* BATTLE GRID */
+button:hover{
+background:#ffaa00;
+}
 
-.battle-grid{
+/* GRID */
+
+.grid{
 display:grid;
 grid-template-columns:repeat(auto-fill,minmax(320px,1fr));
 gap:28px;
@@ -120,52 +104,68 @@ gap:28px;
 
 .card{
 background:#1b1b1b;
-border-radius:16px;
-padding:22px;
-box-shadow:0 0 18px rgba(255,100,0,.12);
+border-radius:14px;
+padding:20px;
+box-shadow:0 0 18px rgba(255,100,0,.15);
+position:relative;
 transition:.25s;
 }
 
 .card:hover{
-transform:translateY(-6px);
-box-shadow:0 0 30px rgba(255,120,0,.25);
+transform:translateY(-5px);
+box-shadow:0 0 26px rgba(255,150,0,.35);
 }
-
-/* POSTER */
 
 .poster{
 width:100%;
-border-radius:12px;
+border-radius:10px;
 margin-top:12px;
 }
 
-/* TOOLBAR */
+.meta{
+font-size:14px;
+opacity:.85;
+margin-top:6px;
+}
 
-.toolbar{
+/* RULE BADGES */
+
+.rule{
+display:inline-block;
+padding:4px 8px;
+margin:4px 4px 0 0;
+border-radius:6px;
+font-size:12px;
+font-weight:600;
+}
+
+.allowed{background:#2ecc71;}
+.denied{background:#c0392b;}
+.warning{background:#e67e22;}
+.highlight{background:#9b59b6;}
+
+/* EDIT PANEL */
+
+.edit-panel{
 margin-top:14px;
-display:flex;
-gap:10px;
+border-top:1px solid #333;
+padding-top:14px;
 }
 
-.edit-btn{
-background:#ffaa00;
+.edit-panel input,
+.edit-panel select{
+margin-bottom:10px;
 }
+
+/* DELETE BUTTON */
 
 .delete-btn{
-background:#ff3333;
-color:white;
+background:#aa0000;
+margin-top:8px;
 }
 
-/* LABEL */
-
-label{
-font-size:13px;
-opacity:.7;
-}
-
-.section-title{
-margin-bottom:18px;
-color:#ffaa00;
+.delete-btn:hover{
+background:#ff0000;
 }
 
 </style>
@@ -177,7 +177,6 @@ color:#ffaa00;
 
 <div class="logo">
 <img src="/logo.png">
-<h2>Flame Force Control Panel</h2>
 </div>
 
 <div class="nav">
@@ -190,58 +189,82 @@ color:#ffaa00;
 
 <div class="wrapper">
 
-<% if(roleLevel==="owner" || roleLevel==="admin"){ %>
+<% if(roleLevel === "owner" || roleLevel === "admin"){ %>
 
-<div class="panel">
+<div class="form-box">
 
-<h2 class="section-title">Create Battle</h2>
+<h2>Create Battle</h2>
 
-<form action="/create" method="POST" enctype="multipart/form-data">
+<form
+action="/create"
+method="POST"
+enctype="multipart/form-data"
+>
 
-<div class="form-grid">
+<label>Host</label>
 
-<div>
-<label>Host Creator</label>
-<select name="host">
+<select name="host" required>
+
 <% agencyMembers.forEach(member=>{ %>
-<option value="<%=member.id%>">
-<%=member.name%>
+
+<option value="<%= member.id %>">
+<%= member.name %>
 </option>
+
 <% }) %>
+
 </select>
-</div>
 
-<div>
 <label>Opponent</label>
-<input name="opponent"
-placeholder="TikTok username">
-</div>
 
-<div>
+<input
+type="text"
+name="opponent"
+required
+placeholder="Enter opponent username"
+/>
+
 <label>Date</label>
-<input type="date" name="date">
-</div>
+<input type="date" name="date" required>
 
-<div>
 <label>Time</label>
-<input type="time" name="time">
-</div>
+<input type="time" name="time" required>
 
-<div>
-<label>Live Link</label>
-<input name="liveLink">
-</div>
-
-<div>
-<label>Poster Upload</label>
+<label>Poster</label>
 <input type="file" name="poster">
-</div>
 
-</div>
+<label>Live Link</label>
+<input type="text" name="liveLink">
 
-<br>
+<label>Manager Gifting</label>
 
-<button class="create-btn">
+<select name="managerGifting">
+<option value="true">Allowed</option>
+<option value="false">Not Allowed</option>
+</select>
+
+<label>18+ Battle</label>
+
+<select name="adultOnly">
+<option value="false">Off</option>
+<option value="true">On 🔞</option>
+</select>
+
+<label>Power-Ups</label>
+
+<select name="powerUps">
+<option value="true">Allowed ⚡</option>
+<option value="false">Not Allowed</option>
+</select>
+
+<label>Hammers</label>
+
+<select name="noHammers">
+<option value="false">Allowed 🔨</option>
+<option value="true">No Hammers</option>
+</select>
+
+<button type="submit">
 Create Battle
 </button>
 
@@ -252,84 +275,142 @@ Create Battle
 <% } %>
 
 
-<h2 class="section-title">Scheduled Battles</h2>
-
-<div class="battle-grid">
+<div class="grid">
 
 <% battles.forEach(battle=>{ %>
 
 <div class="card">
 
-<form
-action="/edit/<%=battle.id%>"
-method="POST"
-enctype="multipart/form-data">
+<h3>
+⚔ <%= battle.host %> vs <%= battle.opponent %>
+</h3>
 
-<label>Host</label>
+<div class="meta">
+📅 <%= battle.date %>
+</div>
 
-<select name="host">
-<% agencyMembers.forEach(member=>{ %>
-<option value="<%=member.id%>"
-<%=member.id==battle.host?"selected":""%>>
-<%=member.name%>
-</option>
-<% }) %>
-</select>
+<div class="meta">
+⏰ <%= battle.time %>
+</div>
 
-<label>Opponent</label>
 
-<input
-name="opponent"
-value="<%=battle.opponent%>">
+<div>
 
-<label>Date</label>
+<span class="rule <%= battle.managergifting ? 'allowed':'denied' %>">
+🎁 Gifting
+</span>
 
-<input
-type="date"
-name="date"
-value="<%=battle.date%>">
+<span class="rule <%= battle.adultonly ? 'warning':'allowed' %>">
+🔞 18+
+</span>
 
-<label>Time</label>
+<span class="rule <%= battle.powerups ? 'allowed':'denied' %>">
+⚡ Power-Ups
+</span>
 
-<input
-type="time"
-name="time"
-value="<%=battle.time%>">
+<span class="rule <%= battle.nohammers ? 'denied':'allowed' %>">
+🔨 Hammers
+</span>
 
-<label>Live Link</label>
+</div>
 
-<input
-name="liveLink"
-value="<%=battle.liveLink||""%>">
-
-<label>Replace Poster</label>
-
-<input type="file" name="poster">
 
 <% if(battle.poster){ %>
 
 <img
 class="poster"
-src="<%=battle.poster%>">
+src="<%= battle.poster %>"
+>
 
 <% } %>
 
-<% if(roleLevel==="owner"||roleLevel==="admin"){ %>
 
-<div class="toolbar">
+<% if(roleLevel === "owner" || roleLevel === "admin"){ %>
 
-<button class="edit-btn">
-Save
+<div class="edit-panel">
+
+<form
+action="/edit/<%= battle.id %>"
+method="POST"
+enctype="multipart/form-data"
+>
+
+<input
+type="text"
+name="opponent"
+value="<%= battle.opponent %>"
+required
+>
+
+<input
+type="date"
+name="date"
+value="<%= battle.date %>"
+required
+>
+
+<input
+type="time"
+name="time"
+value="<%= battle.time %>"
+required
+>
+
+<select name="managerGifting">
+<option value="true" <%= battle.managergifting ? "selected":"" %>>
+Allowed
+</option>
+<option value="false" <%= !battle.managergifting ? "selected":"" %>>
+Not Allowed
+</option>
+</select>
+
+<select name="adultOnly">
+<option value="true" <%= battle.adultonly ? "selected":"" %>>
+18+ On
+</option>
+<option value="false" <%= !battle.adultonly ? "selected":"" %>>
+18+ Off
+</option>
+</select>
+
+<select name="powerUps">
+<option value="true" <%= battle.powerups ? "selected":"" %>>
+Allowed
+</option>
+<option value="false" <%= !battle.powerups ? "selected":"" %>>
+Not Allowed
+</option>
+</select>
+
+<select name="noHammers">
+<option value="true" <%= battle.nohammers ? "selected":"" %>>
+No Hammers
+</option>
+<option value="false" <%= !battle.nohammers ? "selected":"" %>>
+Allowed
+</option>
+</select>
+
+<button type="submit">
+Save Changes
 </button>
 
 </form>
 
-<form
-action="/delete/<%=battle.id%>"
-method="POST">
 
-<button class="delete-btn">
-Delete
+<form
+action="/delete/<%= battle.id %>"
+method="POST"
+>
+
+<button
+class="delete-btn"
+type="submit"
+>
+
+Delete Battle
+
 </button>
 
 </form>

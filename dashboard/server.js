@@ -14,7 +14,7 @@ const db = require("../database");
 const app = express();
 
 /*
-ROLE IDS (Flame Force)
+ROLE IDS
 */
 const OWNER_ROLE = "1439255505053683804";
 const ADMIN_ROLE = "1439256200658157588";
@@ -35,7 +35,7 @@ const upload = multer({
 });
 
 /*
-AUTO-RESIZE POSTER TO 1:1 FORMAT
+AUTO-RESIZE POSTER
 */
 async function processPoster(file) {
 
@@ -51,16 +51,15 @@ async function processPoster(file) {
   }
 
   const filename =
-    Date.now() +
-    "-" +
+    Date.now() + "-" +
     file.originalname.replace(/\s+/g, "_");
 
   const outputPath =
     path.join(postersDir, filename);
 
   await sharp(file.path)
-    .resize(1080, 1080, { fit: "cover" })
-    .jpeg({ quality: 92 })
+    .resize(1080,1080,{fit:"cover"})
+    .jpeg({quality:92})
     .toFile(outputPath);
 
   fs.unlinkSync(file.path);
@@ -71,25 +70,25 @@ async function processPoster(file) {
 /*
 EXPRESS CONFIG
 */
-app.set("view engine", "ejs");
+app.set("view engine","ejs");
 
 app.set(
   "views",
-  path.join(process.cwd(), "dashboard/views")
+  path.join(process.cwd(),"dashboard/views")
 );
 
 app.use(
   express.static(
-    path.join(process.cwd(), "dashboard/public")
+    path.join(process.cwd(),"dashboard/public")
   )
 );
 
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({extended:true}));
 
 /*
-SESSION FIX FOR RAILWAY HTTPS
+SESSION FIX FOR RAILWAY
 */
-app.set("trust proxy", 1);
+app.set("trust proxy",1);
 
 app.use(
   session({
@@ -97,12 +96,12 @@ app.use(
       process.env.SESSION_SECRET ||
       "flame-force-secret",
 
-    resave: false,
-    saveUninitialized: false,
+    resave:false,
+    saveUninitialized:false,
 
-    cookie: {
-      secure: true,
-      sameSite: "none"
+    cookie:{
+      secure:true,
+      sameSite:"none"
     }
   })
 );
@@ -111,106 +110,90 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 /*
-DISCORD LOGIN STRATEGY
+DISCORD LOGIN
 */
 passport.use(
   new DiscordStrategy(
     {
-      clientID: process.env.CLIENT_ID,
-      clientSecret:
-        process.env.CLIENT_SECRET,
-      callbackURL:
-        process.env.CALLBACK_URL,
-      scope: ["identify"]
+      clientID:process.env.CLIENT_ID,
+      clientSecret:process.env.CLIENT_SECRET,
+      callbackURL:process.env.CALLBACK_URL,
+      scope:["identify"]
     },
-    (accessToken, refreshToken, profile, done) =>
-      done(null, profile)
+    (accessToken,refreshToken,profile,done)=>
+      done(null,profile)
   )
 );
 
-passport.serializeUser(
-  (user, done) => done(null, user)
-);
-
-passport.deserializeUser(
-  (obj, done) => done(null, obj)
-);
+passport.serializeUser((u,d)=>d(null,u));
+passport.deserializeUser((o,d)=>d(null,o));
 
 /*
 ROLE DETECTION
 */
-async function getUserRoleLevel(req) {
+async function getUserRoleLevel(req){
 
-  try {
+  try{
 
     const response = await axios.get(
       `https://discord.com/api/v10/guilds/${process.env.GUILD_ID}/members/${req.user.id}`,
       {
-        headers: {
-          Authorization:
-            `Bot ${process.env.TOKEN}`
+        headers:{
+          Authorization:`Bot ${process.env.TOKEN}`
         }
       }
     );
 
-    const roles =
-      response.data.roles || [];
+    const roles = response.data.roles || [];
 
-    if (roles.includes(OWNER_ROLE))
+    if(roles.includes(OWNER_ROLE))
       return "owner";
 
-    if (roles.includes(ADMIN_ROLE))
+    if(roles.includes(ADMIN_ROLE))
       return "admin";
 
     return "none";
 
-  } catch (err) {
+  }catch(err){
 
     console.log(
       "Role lookup error:",
-      err.response?.data ||
-      err.message
+      err.response?.data || err.message
     );
 
     return "none";
-
   }
 }
 
 /*
-AUTH MIDDLEWARE
+AUTH CHECK
 */
-async function checkAuth(
-  req,
-  res,
-  next
-) {
+async function checkAuth(req,res,next){
 
-  if (!req.isAuthenticated())
+  if(!req.isAuthenticated())
     return res.redirect("/");
 
   req.roleLevel =
     await getUserRoleLevel(req);
 
-  if (req.roleLevel === "none")
+  if(req.roleLevel==="none")
     return res.send("Access denied");
 
   next();
 }
 
 /*
-FETCH AGENCY MEMBERS FOR DROPDOWN
+FETCH AGENCY MEMBERS
 */
-async function getAgencyMembers() {
+async function getAgencyMembers(){
 
-  try {
+  try{
 
     const response = await axios.get(
       `https://discord.com/api/v10/guilds/${process.env.GUILD_ID}/members?limit=1000`,
       {
-        headers: {
-          Authorization:
-            `Bot ${process.env.TOKEN}`
+        headers:{
+          Authorization:`Bot ${process.env.TOKEN}`
         }
       }
     );
@@ -221,14 +204,12 @@ async function getAgencyMembers() {
           CREATOR_ROLES.includes(role)
         )
       )
-      .map(member => ({
-        id: member.user.id,
-        name:
-          member.nick ||
-          member.user.username
+      .map(member=>({
+        id:member.user.id,
+        name:member.nick || member.user.username
       }));
 
-  } catch (err) {
+  }catch(err){
 
     console.log(
       "Creator fetch failed:",
@@ -242,9 +223,7 @@ async function getAgencyMembers() {
 /*
 LOGIN ROUTES
 */
-app.get("/", (req, res) =>
-  res.render("login")
-);
+app.get("/",(req,res)=>res.render("login"));
 
 app.get(
   "/login",
@@ -255,35 +234,31 @@ app.get(
   "/auth/callback",
   passport.authenticate(
     "discord",
-    { failureRedirect: "/" }
+    {failureRedirect:"/"}
   ),
-  (req, res) =>
-    res.redirect("/dashboard")
+  (req,res)=>res.redirect("/dashboard")
 );
 
-app.get("/logout", (req, res) =>
-  req.logout(() =>
-    res.redirect("/")
-  )
+app.get("/logout",(req,res)=>
+  req.logout(()=>res.redirect("/"))
 );
 
 /*
-DEBUG ROLE ROUTE
+DEBUG ROLES
 */
 app.get(
   "/debug-roles",
-  async (req, res) => {
+  async(req,res)=>{
 
-    if (!req.isAuthenticated())
+    if(!req.isAuthenticated())
       return res.send("Not logged in");
 
     const response =
       await axios.get(
         `https://discord.com/api/v10/guilds/${process.env.GUILD_ID}/members/${req.user.id}`,
         {
-          headers: {
-            Authorization:
-              `Bot ${process.env.TOKEN}`
+          headers:{
+            Authorization:`Bot ${process.env.TOKEN}`
           }
         }
       );
@@ -298,19 +273,19 @@ DASHBOARD PAGE
 app.get(
   "/dashboard",
   checkAuth,
-  async (req, res) => {
+  async(req,res)=>{
 
     const battles =
       await db.query(
-        "SELECT * FROM battles ORDER BY date, time"
+        "SELECT * FROM battles ORDER BY date,time"
       );
 
     const agencyMembers =
       await getAgencyMembers();
 
-    res.render("dashboard", {
-      battles: battles.rows,
-      roleLevel: req.roleLevel,
+    res.render("dashboard",{
+      battles:battles.rows,
+      roleLevel:req.roleLevel,
       agencyMembers
     });
   }
@@ -323,13 +298,9 @@ app.post(
   "/create",
   checkAuth,
   upload.single("poster"),
-  async (req, res) => {
+  async(req,res)=>{
 
-    if (
-      !["owner", "admin"].includes(
-        req.roleLevel
-      )
-    )
+    if(!["owner","admin"].includes(req.roleLevel))
       return res.send("Permission denied");
 
     const {
@@ -337,7 +308,11 @@ app.post(
       opponent,
       date,
       time,
-      liveLink
+      liveLink,
+      managerGifting,
+      adultOnly,
+      powerUps,
+      noHammers
     } = req.body;
 
     const poster =
@@ -345,38 +320,47 @@ app.post(
 
     await db.query(
       `INSERT INTO battles
-       (host, opponent, date, time, poster, liveLink)
-       VALUES ($1,$2,$3,$4,$5,$6)`,
+       (host,opponent,date,time,poster,liveLink,
+        managerGifting,adultOnly,powerUps,noHammers)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
       [
         host,
         opponent,
         date,
         time,
         poster,
-        liveLink
+        liveLink,
+        managerGifting==="true",
+        adultOnly==="true",
+        powerUps==="true",
+        noHammers==="true"
       ]
     );
 
     /*
-    POST TO DISCORD
+    DISCORD ANNOUNCEMENT
     */
-    try {
+    try{
 
-      const form =
-        new FormData();
+      const form=new FormData();
 
       form.append(
         "content",
-        `🔥 **Flame Force Battle Scheduled!**
+`🔥 **Flame Force Battle Scheduled**
 
 ⚔ <@${host}> vs ${opponent}
 📅 ${date}
 ⏰ ${time}
 
-${liveLink || ""}`
+🎁 Manager Gifting: ${managerGifting==="true"?"Allowed ✅":"Not Allowed ❌"}
+🔞 18+: ${adultOnly==="true"?"Enabled 🔞":"Disabled"}
+⚡ Power-Ups: ${powerUps==="true"?"Allowed ⚡":"Not Allowed ❌"}
+🔨 Hammers: ${noHammers==="true"?"No Hammers ❌":"Allowed 🔨"}
+
+${liveLink||""}`
       );
 
-      if (poster) {
+      if(poster){
 
         form.append(
           "file",
@@ -394,19 +378,14 @@ ${liveLink || ""}`
         `https://discord.com/api/v10/channels/${process.env.BATTLE_CHANNEL_ID}/messages`,
         form,
         {
-          headers: {
-            Authorization:
-              `Bot ${process.env.TOKEN}`,
+          headers:{
+            Authorization:`Bot ${process.env.TOKEN}`,
             ...form.getHeaders()
           }
         }
       );
 
-      console.log(
-        "📢 Battle posted to Discord"
-      );
-
-    } catch (err) {
+    }catch(err){
 
       console.log(
         "Discord post failed:",
@@ -425,13 +404,9 @@ app.post(
   "/edit/:id",
   checkAuth,
   upload.single("poster"),
-  async (req, res) => {
+  async(req,res)=>{
 
-    if (
-      !["owner", "admin"].includes(
-        req.roleLevel
-      )
-    )
+    if(!["owner","admin"].includes(req.roleLevel))
       return res.send("Permission denied");
 
     const {
@@ -439,16 +414,19 @@ app.post(
       opponent,
       date,
       time,
-      liveLink
+      liveLink,
+      managerGifting,
+      adultOnly,
+      powerUps,
+      noHammers
     } = req.body;
 
-    let poster = null;
+    let poster=null;
 
-    if (req.file)
-      poster =
-        await processPoster(req.file);
+    if(req.file)
+      poster=await processPoster(req.file);
 
-    if (poster) {
+    if(poster){
 
       await db.query(
         `UPDATE battles
@@ -457,8 +435,12 @@ app.post(
              date=$3,
              time=$4,
              poster=$5,
-             liveLink=$6
-         WHERE id=$7`,
+             liveLink=$6,
+             managerGifting=$7,
+             adultOnly=$8,
+             powerUps=$9,
+             noHammers=$10
+         WHERE id=$11`,
         [
           host,
           opponent,
@@ -466,11 +448,15 @@ app.post(
           time,
           poster,
           liveLink,
+          managerGifting==="true",
+          adultOnly==="true",
+          powerUps==="true",
+          noHammers==="true",
           req.params.id
         ]
       );
 
-    } else {
+    }else{
 
       await db.query(
         `UPDATE battles
@@ -478,14 +464,22 @@ app.post(
              opponent=$2,
              date=$3,
              time=$4,
-             liveLink=$5
-         WHERE id=$6`,
+             liveLink=$5,
+             managerGifting=$6,
+             adultOnly=$7,
+             powerUps=$8,
+             noHammers=$9
+         WHERE id=$10`,
         [
           host,
           opponent,
           date,
           time,
           liveLink,
+          managerGifting==="true",
+          adultOnly==="true",
+          powerUps==="true",
+          noHammers==="true",
           req.params.id
         ]
       );
@@ -501,13 +495,9 @@ DELETE BATTLE
 app.post(
   "/delete/:id",
   checkAuth,
-  async (req, res) => {
+  async(req,res)=>{
 
-    if (
-      !["owner", "admin"].includes(
-        req.roleLevel
-      )
-    )
+    if(!["owner","admin"].includes(req.roleLevel))
       return res.send("Permission denied");
 
     await db.query(
@@ -520,21 +510,20 @@ app.post(
 );
 
 /*
-CALENDAR PAGE (PERSONALISED)
+CALENDAR PAGE
 */
 app.get(
   "/calendar",
-  async (req, res) => {
+  async(req,res)=>{
 
-    const battles =
+    const battles=
       await db.query(
-        "SELECT * FROM battles ORDER BY date, time"
+        "SELECT * FROM battles ORDER BY date,time"
       );
 
-    res.render("calendar", {
-      battles: battles.rows,
-      userId:
-        req.user?.id || null
+    res.render("calendar",{
+      battles:battles.rows,
+      userId:req.user?.id||null
     });
   }
 );
@@ -545,7 +534,7 @@ START SERVER
 const PORT =
   process.env.PORT || 8080;
 
-app.listen(PORT, () =>
+app.listen(PORT,()=>
   console.log(
     `🔥 Flame Force dashboard running on ${PORT}`
   )
