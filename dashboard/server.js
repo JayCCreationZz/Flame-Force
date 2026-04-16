@@ -20,7 +20,7 @@ const OWNER_ROLE = "1439255505053683804";
 const ADMIN_ROLE = "1439256200658157588";
 
 /*
-CREATOR DROPDOWN ROLE FILTER
+CREATOR ROLE FILTER
 */
 const CREATOR_ROLES = [
   OWNER_ROLE,
@@ -31,28 +31,35 @@ const CREATOR_ROLES = [
 UPLOAD CONFIG
 */
 const upload = multer({
-  dest: path.join(process.cwd(), "dashboard/public/posters/tmp")
+  dest: path.join(
+    process.cwd(),
+    "dashboard/public/posters/tmp"
+  )
 });
 
 /*
-AUTO-RESIZE POSTER TO 1:1
+POSTER PROCESSOR
 */
 async function processPoster(file) {
 
   if (!file) return null;
 
   const postersDir =
-    path.join(process.cwd(),
-    "dashboard/public/posters");
+    path.join(
+      process.cwd(),
+      "dashboard/public/posters"
+    );
 
-  if (!fs.existsSync(postersDir))
-    fs.mkdirSync(postersDir,
-    { recursive:true });
+  if (!fs.existsSync(postersDir)) {
+    fs.mkdirSync(postersDir, {
+      recursive: true
+    });
+  }
 
   const filename =
     Date.now() +
     "-" +
-    file.originalname.replace(/\s+/g,"_");
+    file.originalname.replace(/\s+/g, "_");
 
   const outputPath =
     path.join(postersDir, filename);
@@ -72,20 +79,27 @@ EXPRESS CONFIG
 */
 app.set("view engine","ejs");
 
-app.set("views",
-  path.join(process.cwd(),
-  "dashboard/views")
+app.set(
+  "views",
+  path.join(
+    process.cwd(),
+    "dashboard/views"
+  )
 );
 
 app.use(express.static(
-  path.join(process.cwd(),
-  "dashboard/public")
+  path.join(
+    process.cwd(),
+    "dashboard/public"
+  )
 ));
 
-app.use(express.urlencoded({extended:true}));
+app.use(express.urlencoded({
+  extended:true
+}));
 
 /*
-SESSION FIX FOR RAILWAY HTTPS
+SESSION CONFIG
 */
 app.set("trust proxy",1);
 
@@ -109,7 +123,7 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 /*
-DISCORD LOGIN STRATEGY
+DISCORD LOGIN
 */
 passport.use(new DiscordStrategy({
 
@@ -126,38 +140,33 @@ passport.use(new DiscordStrategy({
 
 },
 
-(accessToken, refreshToken, profile, done)=>
+(accessToken,refreshToken,profile,done)=>
 done(null,profile)
 ));
 
-passport.serializeUser(
-(user,done)=>done(null,user)
-);
-
-passport.deserializeUser(
-(obj,done)=>done(null,obj)
-);
+passport.serializeUser((u,d)=>d(null,u));
+passport.deserializeUser((o,d)=>d(null,o));
 
 /*
-ROLE DETECTION
+ROLE CHECK
 */
 async function getUserRoleLevel(req){
 
   try{
 
     const response =
-    await axios.get(
+      await axios.get(
 
-      `https://discord.com/api/v10/guilds/${process.env.GUILD_ID}/members/${req.user.id}`,
+        `https://discord.com/api/v10/guilds/${process.env.GUILD_ID}/members/${req.user.id}`,
 
-      {
-        headers:{
-          Authorization:
-          `Bot ${process.env.TOKEN}`
+        {
+          headers:{
+            Authorization:
+            `Bot ${process.env.TOKEN}`
+          }
         }
-      }
 
-    );
+      );
 
     const roles =
       response.data.roles || [];
@@ -171,6 +180,7 @@ async function getUserRoleLevel(req){
     return "none";
 
   }
+
   catch(err){
 
     console.log(
@@ -180,11 +190,13 @@ async function getUserRoleLevel(req){
     );
 
     return "none";
+
   }
+
 }
 
 /*
-AUTH CHECK
+AUTH MIDDLEWARE
 */
 async function checkAuth(req,res,next){
 
@@ -198,28 +210,29 @@ async function checkAuth(req,res,next){
     return res.send("Access denied");
 
   next();
+
 }
 
 /*
-FETCH AGENCY MEMBERS (WITH CORRECT DISCORD NICKNAMES)
+FETCH MEMBERS WITH NICKNAMES
 */
 async function getAgencyMembers(){
 
   try{
 
     const response =
-    await axios.get(
+      await axios.get(
 
-      `https://discord.com/api/v10/guilds/${process.env.GUILD_ID}/members?limit=1000`,
+        `https://discord.com/api/v10/guilds/${process.env.GUILD_ID}/members?limit=1000`,
 
-      {
-        headers:{
-          Authorization:
-          `Bot ${process.env.TOKEN}`
+        {
+          headers:{
+            Authorization:
+            `Bot ${process.env.TOKEN}`
+          }
         }
-      }
 
-    );
+      );
 
     return response.data
 
@@ -248,6 +261,7 @@ async function getAgencyMembers(){
       );
 
   }
+
   catch(err){
 
     console.log(
@@ -256,7 +270,9 @@ async function getAgencyMembers(){
     );
 
     return [];
+
   }
+
 }
 
 /*
@@ -266,148 +282,198 @@ app.get("/",(req,res)=>
 res.render("login")
 );
 
-app.get("/login",
-passport.authenticate("discord")
+app.get(
+  "/login",
+  passport.authenticate("discord")
 );
 
-app.get("/auth/callback",
+app.get(
+  "/auth/callback",
 
-passport.authenticate("discord",
-{failureRedirect:"/"}),
+  passport.authenticate(
+    "discord",
+    {failureRedirect:"/"}
+  ),
 
-(req,res)=>
-res.redirect("/dashboard")
+  (req,res)=>
+  res.redirect("/dashboard")
 
 );
 
-app.get("/logout",
-
-(req,res)=>
-req.logout(()=>
-res.redirect("/")
-)
-
+app.get(
+  "/logout",
+  (req,res)=>
+  req.logout(()=>
+    res.redirect("/")
+  )
 );
 
 /*
-DEBUG ROLE CHECK
+DEBUG ROLE ROUTE
 */
-app.get("/debug-roles",
+app.get(
+  "/debug-roles",
 
-async(req,res)=>{
+  async(req,res)=>{
 
-if(!req.isAuthenticated())
-return res.send("Not logged in");
+    if(!req.isAuthenticated())
+      return res.send("Not logged in");
 
-const response =
-await axios.get(
+    const response =
+      await axios.get(
 
-`https://discord.com/api/v10/guilds/${process.env.GUILD_ID}/members/${req.user.id}`,
+        `https://discord.com/api/v10/guilds/${process.env.GUILD_ID}/members/${req.user.id}`,
 
-{
-headers:{
-Authorization:
-`Bot ${process.env.TOKEN}`
-}
-}
+        {
+          headers:{
+            Authorization:
+            `Bot ${process.env.TOKEN}`
+          }
+        }
 
+      );
+
+    res.json(response.data.roles);
+
+  }
 );
-
-res.json(response.data.roles);
-
-});
 
 /*
-DASHBOARD PAGE
+DASHBOARD
 */
-app.get("/dashboard",
+app.get(
+  "/dashboard",
 
-checkAuth,
+  checkAuth,
 
-async(req,res)=>{
+  async(req,res)=>{
 
-const battles =
-await db.query(
-"SELECT * FROM battles ORDER BY date,time"
-);
+    const battlesRaw =
+      await db.query(
+        "SELECT * FROM battles ORDER BY date,time"
+      );
 
-const agencyMembers =
-await getAgencyMembers();
+    const agencyMembers =
+      await getAgencyMembers();
 
-res.render("dashboard",{
+/*
+MAP ID → NAME
+*/
+    const memberMap = {};
 
-battles:battles.rows,
-roleLevel:req.roleLevel,
-agencyMembers
+    agencyMembers.forEach(member=>{
+      memberMap[member.id] =
+        member.name;
+    });
 
-});
+/*
+FORMAT BATTLES
+*/
+    const battles =
+      battlesRaw.rows.map(b=>{
+
+        b.hostName =
+          memberMap[b.host] ||
+          b.host;
+
+/*
+FIX OLD POSTER PATHS
+*/
+        if(
+          b.poster &&
+          !b.poster.startsWith("/posters/")
+        ){
+
+          const filename =
+            b.poster.split("/").pop();
+
+          b.poster =
+            "/posters/" + filename;
+
+        }
+
+        return b;
+
+      });
+
+    res.render("dashboard",{
+
+      battles,
+      roleLevel:req.roleLevel,
+      agencyMembers
+
+    });
 
 });
 
 /*
 CREATE BATTLE
 */
-app.post("/create",
+app.post(
+  "/create",
 
-checkAuth,
+  checkAuth,
 
-upload.single("poster"),
+  upload.single("poster"),
 
-async(req,res)=>{
+  async(req,res)=>{
 
-if(!["owner","admin"]
-.includes(req.roleLevel))
-return res.send("Permission denied");
+    if(!["owner","admin"]
+      .includes(req.roleLevel))
+      return res.send("Permission denied");
 
-const{
+    const{
 
-host,
-opponent,
-date,
-time,
-liveLink,
-managerGifting,
-adultOnly,
-powerUps,
-noHammers
+      host,
+      opponent,
+      date,
+      time,
+      liveLink,
+      managerGifting,
+      adultOnly,
+      powerUps,
+      noHammers
 
-}=req.body;
+    } = req.body;
 
-const poster =
-await processPoster(req.file);
+    const poster =
+      await processPoster(req.file);
 
-await db.query(
+    await db.query(
 
-`INSERT INTO battles
-(host,opponent,date,time,poster,liveLink,
-managerGifting,adultOnly,powerUps,noHammers)
+      `INSERT INTO battles
+       (host,opponent,date,time,poster,
+        liveLink,managerGifting,
+        adultOnly,powerUps,noHammers)
 
-VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
 
-[
-host,
-opponent,
-date,
-time,
-poster,
-liveLink,
-managerGifting==="true",
-adultOnly==="true",
-powerUps==="true",
-noHammers==="true"
-]
+      [
+        host,
+        opponent,
+        date,
+        time,
+        poster,
+        liveLink,
+        managerGifting==="true",
+        adultOnly==="true",
+        powerUps==="true",
+        noHammers==="true"
+      ]
 
-);
+    );
 
 /*
-POST TO DISCORD
+DISCORD POST
 */
-try{
+    try{
 
-const form =
-new FormData();
+      const form =
+        new FormData();
 
-form.append("content",
+      form.append(
+
+        "content",
 
 `🔥 **Flame Force Battle Scheduled**
 
@@ -417,117 +483,110 @@ form.append("content",
 ⏰ ${time}
 
 🎁 Manager Gifting:
-${managerGifting==="true"
-?"Allowed ✅"
-:"Not Allowed ❌"}
+${managerGifting==="true"?"Allowed ✅":"Not Allowed ❌"}
 
 🔞 18+:
-${adultOnly==="true"
-?"Enabled 🔞"
-:"Disabled"}
+${adultOnly==="true"?"Enabled 🔞":"Disabled"}
 
 ⚡ Power-Ups:
-${powerUps==="true"
-?"Allowed ⚡"
-:"Not Allowed ❌"}
+${powerUps==="true"?"Allowed ⚡":"Not Allowed ❌"}
 
 🔨 Hammers:
-${noHammers==="true"
-?"No Hammers ❌"
-:"Allowed 🔨"}
+${noHammers==="true"?"No Hammers ❌":"Allowed 🔨"}
 
 ${liveLink||""}`
 
-);
+      );
 
-if(poster){
+      if(poster){
 
-form.append(
+        form.append(
+          "file",
 
-"file",
+          fs.createReadStream(
+            path.join(
+              process.cwd(),
+              "dashboard/public",
+              poster
+            )
+          )
 
-fs.createReadStream(
-path.join(
-process.cwd(),
-"dashboard/public",
-poster
-)
-)
+        );
 
-);
+      }
 
-}
+      await axios.post(
 
-await axios.post(
+        `https://discord.com/api/v10/channels/${process.env.BATTLE_CHANNEL_ID}/messages`,
 
-`https://discord.com/api/v10/channels/${process.env.BATTLE_CHANNEL_ID}/messages`,
+        form,
 
-form,
+        {
+          headers:{
+            Authorization:
+            `Bot ${process.env.TOKEN}`,
+            ...form.getHeaders()
+          }
+        }
 
-{
-headers:{
-Authorization:
-`Bot ${process.env.TOKEN}`,
-...form.getHeaders()
-}
-}
+      );
 
-);
+      console.log("Posted to Discord");
 
-console.log("📢 Posted to Discord");
+    }
 
-}
-catch(err){
+    catch(err){
 
-console.log(
-"Discord post failed:",
-err.message
-);
+      console.log(
+        "Discord post failed:",
+        err.message
+      );
 
-}
+    }
 
-res.redirect("/dashboard");
+    res.redirect("/dashboard");
 
 });
 
 /*
 EDIT BATTLE
 */
-app.post("/edit/:id",
+app.post(
+  "/edit/:id",
 
-checkAuth,
+  checkAuth,
 
-upload.single("poster"),
+  upload.single("poster"),
 
-async(req,res)=>{
+  async(req,res)=>{
 
-if(!["owner","admin"]
-.includes(req.roleLevel))
-return res.send("Permission denied");
+    if(!["owner","admin"]
+      .includes(req.roleLevel))
+      return res.send("Permission denied");
 
-const{
+    const{
 
-host,
-opponent,
-date,
-time,
-liveLink,
-managerGifting,
-adultOnly,
-powerUps,
-noHammers
+      host,
+      opponent,
+      date,
+      time,
+      liveLink,
+      managerGifting,
+      adultOnly,
+      powerUps,
+      noHammers
 
-}=req.body;
+    } = req.body;
 
-let poster=null;
+    let poster=null;
 
-if(req.file)
-poster=
-await processPoster(req.file);
+    if(req.file)
+      poster=
+        await processPoster(req.file);
 
-if(poster){
+    if(poster){
 
-await db.query(
+      await db.query(
 
 `UPDATE battles
 SET host=$1,
@@ -540,7 +599,6 @@ managerGifting=$7,
 adultOnly=$8,
 powerUps=$9,
 noHammers=$10
-
 WHERE id=$11`,
 
 [
@@ -559,10 +617,11 @@ req.params.id
 
 );
 
-}
-else{
+    }
 
-await db.query(
+    else{
+
+      await db.query(
 
 `UPDATE battles
 SET host=$1,
@@ -574,7 +633,6 @@ managerGifting=$6,
 adultOnly=$7,
 powerUps=$8,
 noHammers=$9
-
 WHERE id=$10`,
 
 [
@@ -592,65 +650,67 @@ req.params.id
 
 );
 
-}
+    }
 
-res.redirect("/dashboard");
+    res.redirect("/dashboard");
 
 });
 
 /*
 DELETE BATTLE
 */
-app.post("/delete/:id",
+app.post(
+  "/delete/:id",
 
-checkAuth,
+  checkAuth,
 
-async(req,res)=>{
+  async(req,res)=>{
 
-if(!["owner","admin"]
-.includes(req.roleLevel))
-return res.send("Permission denied");
+    if(!["owner","admin"]
+      .includes(req.roleLevel))
+      return res.send("Permission denied");
 
-await db.query(
-"DELETE FROM battles WHERE id=$1",
-[req.params.id]
-);
+    await db.query(
+      "DELETE FROM battles WHERE id=$1",
+      [req.params.id]
+    );
 
-res.redirect("/dashboard");
+    res.redirect("/dashboard");
 
 });
 
 /*
-CALENDAR PAGE
+CALENDAR
 */
-app.get("/calendar",
+app.get(
+  "/calendar",
 
-async(req,res)=>{
+  async(req,res)=>{
 
-const battles =
-await db.query(
-"SELECT * FROM battles ORDER BY date,time"
-);
+    const battles =
+      await db.query(
+        "SELECT * FROM battles ORDER BY date,time"
+      );
 
-res.render("calendar",{
+    res.render("calendar",{
 
-battles:battles.rows,
-userId:req.user?.id || null
+      battles:battles.rows,
+      userId:req.user?.id||null
 
-});
+    });
 
 });
 
 /*
-START SERVER
+SERVER START
 */
 const PORT =
 process.env.PORT || 8080;
 
-app.listen(PORT,()=>
+app.listen(PORT,()=>{
 
 console.log(
 `🔥 Flame Force dashboard running on ${PORT}`
-)
-
 );
+
+});
