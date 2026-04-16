@@ -14,14 +14,14 @@ const db = require("../database");
 const app = express();
 
 /*
-ROLE IDS (Flame Force)
+ROLE IDS
 */
 const OWNER_ROLE = "1465436891238367284";
 const ADMIN_ROLE = "1493636042354331779";
 const MEMBER_ROLE = "1458157807361720426";
 
 /*
-CREATOR ROLES (dropdown list)
+CREATOR DROPDOWN ROLES
 */
 const CREATOR_ROLES = [
   OWNER_ROLE,
@@ -30,14 +30,14 @@ const CREATOR_ROLES = [
 ];
 
 /*
-UPLOAD CONFIG
+POSTER UPLOAD CONFIG
 */
 const upload = multer({
   dest: path.join(process.cwd(), "dashboard/public/posters/tmp")
 });
 
 /*
-AUTO RESIZE POSTER
+AUTO RESIZE POSTER TO SQUARE
 */
 async function processPoster(file) {
 
@@ -88,15 +88,22 @@ app.use(
 app.use(express.urlencoded({ extended: true }));
 
 /*
-SESSION CONFIG
+IMPORTANT FOR RAILWAY HTTPS SESSION SUPPORT
 */
 app.set("trust proxy", 1);
 
+/*
+SESSION CONFIG (FIXES LOGIN LOOP)
+*/
 app.use(
   session({
-    secret: "flame-force-secret",
+    secret: process.env.SESSION_SECRET || "flame-force-secret",
     resave: false,
-    saveUninitialized: false
+    saveUninitialized: false,
+    cookie: {
+      secure: true,
+      sameSite: "none"
+    }
   })
 );
 
@@ -104,7 +111,7 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 /*
-DISCORD LOGIN
+DISCORD OAUTH LOGIN
 */
 passport.use(
   new DiscordStrategy(
@@ -119,11 +126,16 @@ passport.use(
   )
 );
 
-passport.serializeUser((u, d) => d(null, u));
-passport.deserializeUser((o, d) => d(null, o));
+passport.serializeUser((user, done) =>
+  done(null, user)
+);
+
+passport.deserializeUser((obj, done) =>
+  done(null, obj)
+);
 
 /*
-ROLE LOOKUP (ROBUST VERSION)
+ROLE DETECTION
 */
 async function getUserRoleLevel(req) {
 
@@ -133,7 +145,7 @@ async function getUserRoleLevel(req) {
       `https://discord.com/api/v10/guilds/${process.env.GUILD_ID}/members/${req.user.id}`,
       {
         headers: {
-          Authorization: `Bot ${process.env.TOKEN.trim()}`
+          Authorization: `Bot ${process.env.TOKEN}`
         }
       }
     );
@@ -141,7 +153,7 @@ async function getUserRoleLevel(req) {
     const roles = response.data.roles || [];
 
     console.log("User:", req.user.id);
-    console.log("Roles detected:", roles);
+    console.log("Roles:", roles);
 
     if (roles.includes(OWNER_ROLE))
       return "owner";
@@ -168,7 +180,7 @@ async function getUserRoleLevel(req) {
 }
 
 /*
-AUTH CHECK
+AUTH MIDDLEWARE
 */
 async function checkAuth(req, res, next) {
 
@@ -186,7 +198,7 @@ async function checkAuth(req, res, next) {
 }
 
 /*
-FETCH CREATOR LIST
+FETCH DROPDOWN CREATORS
 */
 async function getAgencyMembers() {
 
@@ -209,7 +221,9 @@ async function getAgencyMembers() {
       )
       .map(member => ({
         id: member.user.id,
-        name: member.nick || member.user.username
+        name:
+          member.nick ||
+          member.user.username
       }));
 
   } catch (err) {
@@ -293,36 +307,19 @@ app.get(
   checkAuth,
   async (req, res) => {
 
-    try {
-
-      const result =
-        await db.query(
-          "SELECT * FROM battles ORDER BY date, time"
-        );
-
-      const agencyMembers =
-        await getAgencyMembers();
-
-      res.render("dashboard", {
-        battles: result.rows,
-        roleLevel: req.roleLevel,
-        agencyMembers
-      });
-
-    } catch (err) {
-
-      console.log(
-        "Dashboard error:",
-        err.message
+    const result =
+      await db.query(
+        "SELECT * FROM battles ORDER BY date, time"
       );
 
-      res.render("dashboard", {
-        battles: [],
-        roleLevel: req.roleLevel,
-        agencyMembers: []
-      });
+    const agencyMembers =
+      await getAgencyMembers();
 
-    }
+    res.render("dashboard", {
+      battles: result.rows,
+      roleLevel: req.roleLevel,
+      agencyMembers
+    });
 
   }
 );
@@ -365,9 +362,6 @@ app.post(
       ]
     );
 
-    /*
-    POST TO DISCORD
-    */
     try {
 
       const form =
@@ -452,21 +446,18 @@ app.post(
 /*
 CALENDAR
 */
-app.get(
-  "/calendar",
-  async (req, res) => {
+app.get("/calendar", async (req, res) => {
 
-    const result =
-      await db.query(
-        "SELECT * FROM battles ORDER BY date, time"
-      );
+  const result =
+    await db.query(
+      "SELECT * FROM battles ORDER BY date, time"
+    );
 
-    res.render("calendar", {
-      battles: result.rows
-    });
+  res.render("calendar", {
+    battles: result.rows
+  });
 
-  }
-);
+});
 
 /*
 START SERVER
