@@ -1,17 +1,18 @@
+require("dotenv").config();
+
 const { Pool } = require("pg");
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
+  ssl: {
+    rejectUnauthorized: false
+  }
 });
 
 async function initDB() {
 
   try {
 
-    /*
-    Ensure base table exists
-    */
     await pool.query(`
       CREATE TABLE IF NOT EXISTS battles (
         id SERIAL PRIMARY KEY,
@@ -22,10 +23,6 @@ async function initDB() {
         liveLink TEXT
       )
     `);
-
-    /*
-    ADD NEW COLUMNS SAFELY
-    */
 
     await pool.query(`
       ALTER TABLE battles

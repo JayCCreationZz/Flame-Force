@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html>
+
 <head>
+
 <meta charset="UTF-8">
 <title>Flame Force Dashboard</title>
 
@@ -9,15 +11,18 @@
 <style>
 
 body{
-font-family:Segoe UI;
 background:#0d0d0d;
-color:#fff;
+color:white;
+font-family:Segoe UI;
 margin:0;
 }
+
+/* HEADER */
 
 header{
 display:flex;
 align-items:center;
+gap:15px;
 padding:20px;
 background:#111;
 border-bottom:2px solid #ff6600;
@@ -25,33 +30,92 @@ border-bottom:2px solid #ff6600;
 
 .logo{
 height:60px;
-margin-right:15px;
 }
 
 .container{
 padding:30px;
 }
 
-form{
+/* CREATE PANEL */
+
+.create-card{
 background:#111;
-padding:20px;
-border-radius:10px;
-margin-bottom:30px;
+padding:25px;
+border-radius:14px;
+margin-bottom:40px;
+box-shadow:0 0 20px rgba(255,120,0,.25);
+}
+
+.grid{
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:15px;
+}
+
+.rules-grid{
+display:grid;
+grid-template-columns:repeat(4,1fr);
+gap:12px;
+margin-top:20px;
 }
 
 input,select{
 padding:10px;
-margin:6px 0;
-width:100%;
 border-radius:6px;
 border:none;
+background:#222;
+color:white;
+}
+
+.create-btn{
+margin-top:20px;
+width:100%;
+font-size:16px;
+padding:14px;
+background:linear-gradient(45deg,#ff6600,#ff3300);
+border:none;
+border-radius:10px;
+color:white;
+cursor:pointer;
+}
+
+.create-btn:hover{
+transform:scale(1.03);
+}
+
+/* BATTLE CARDS */
+
+.card{
+background:#111;
+padding:20px;
+border-radius:12px;
+margin-bottom:25px;
+border-left:4px solid #ff6600;
+}
+
+.poster{
+width:220px;
+border-radius:10px;
+margin-top:10px;
+}
+
+.rules{
+font-size:13px;
+margin-top:10px;
+color:#bbb;
+}
+
+.poster-replace{
+margin-top:10px;
+display:flex;
+gap:10px;
 }
 
 button{
 background:#ff6600;
 border:none;
-padding:10px 18px;
-color:#fff;
+padding:8px 14px;
+color:white;
 cursor:pointer;
 border-radius:6px;
 }
@@ -60,155 +124,271 @@ button:hover{
 background:#ff8533;
 }
 
-.battle-card{
-background:#111;
-padding:15px;
-border-radius:10px;
-margin-bottom:20px;
-border-left:4px solid #ff6600;
-}
-
-.poster{
-width:200px;
-border-radius:10px;
-margin-top:10px;
-}
-
-.rules{
-font-size:13px;
-margin-top:8px;
-color:#bbb;
-}
-
-.actions{
-margin-top:10px;
-}
-
 </style>
+
 </head>
 
 <body>
 
 <header>
+
 <img src="/logo.png" class="logo">
+
 <h2>Flame Force Battle Dashboard</h2>
+
 </header>
 
 <div class="container">
 
-<% if(roleLevel === "owner" || roleLevel === "admin"){ %>
+<% if(roleLevel==="owner"||roleLevel==="admin"){ %>
+
+<div class="create-card">
 
 <h3>Create Battle</h3>
 
-<form action="/create" method="POST" enctype="multipart/form-data">
+<form action="/create"
+method="POST"
+enctype="multipart/form-data">
+
+<div class="grid">
+
+<div>
 
 <label>Creator</label>
+
 <select name="host" required>
-<% agencyMembers.forEach(member => { %>
+
+<% agencyMembers.forEach(member=>{ %>
+
 <option value="<%= member.id %>">
 <%= member.name %>
 </option>
+
 <% }) %>
+
 </select>
+
+</div>
+
+<div>
 
 <label>Opponent</label>
-<input type="text" name="opponent" required>
+
+<input
+type="text"
+name="opponent"
+placeholder="TikTok username"
+required>
+
+</div>
+
+<div>
 
 <label>Date</label>
+
 <input type="date" name="date" required>
 
+</div>
+
+<div>
+
 <label>Time</label>
+
 <input type="time" name="time" required>
 
+</div>
+
+<div>
+
 <label>Live Link</label>
-<input type="text" name="liveLink">
+
+<input
+type="text"
+name="liveLink"
+placeholder="Optional livestream link">
+
+</div>
+
+<div>
 
 <label>Poster</label>
-<input type="file" name="poster" accept="image/*">
 
-<label>Manager Gifting</label>
+<input
+type="file"
+name="poster"
+accept="image/*">
+
+</div>
+
+</div>
+
+<div class="rules-grid">
+
+<label>
+
+Manager Gifting
+
 <select name="managerGifting">
+
 <option value="true">Allowed</option>
-<option value="false">Not Allowed</option>
+
+<option value="false">Disabled</option>
+
 </select>
 
-<label>18+</label>
+</label>
+
+<label>
+
+18+
+
 <select name="adultOnly">
+
 <option value="false">Off</option>
+
 <option value="true">On</option>
+
 </select>
 
-<label>Power Ups</label>
+</label>
+
+<label>
+
+Power Ups
+
 <select name="powerUps">
+
 <option value="true">Allowed</option>
-<option value="false">Not Allowed</option>
+
+<option value="false">Disabled</option>
+
 </select>
 
-<label>No Hammers</label>
+</label>
+
+<label>
+
+No Hammers
+
 <select name="noHammers">
+
 <option value="false">Allowed</option>
-<option value="true">No Hammers</option>
+
+<option value="true">Enabled</option>
+
 </select>
 
-<br><br>
-<button>Create Battle</button>
+</label>
+
+</div>
+
+<button class="create-btn">
+
+Create Battle
+
+</button>
 
 </form>
+
+</div>
 
 <% } %>
 
 <h3>Scheduled Battles</h3>
 
-<% battles.forEach(battle => { %>
+<% battles.forEach(battle=>{ %>
 
-<div class="battle-card">
+<div class="card">
 
 <strong>
+
 ⚔ <%= battle.hostName %> vs <%= battle.opponent %>
+
 </strong>
 
 <br>
+
 📅 <%= battle.date %>
+
 ⏰ <%= battle.time %>
 
 <% if(battle.liveLink){ %>
+
 <br>
-🔗 <a href="<%= battle.liveLink %>" target="_blank">
+
+🔗
+
+<a href="<%= battle.liveLink %>"
+target="_blank">
+
 Watch Battle
+
 </a>
+
 <% } %>
 
 <div class="rules">
 
 🎁 Manager Gifting:
-<%= battle.managergifting ? "Allowed" : "Not Allowed" %>
+
+<%= battle.managergifting ? "Allowed" : "Disabled" %>
 
 |
+
 🔞 18+:
+
 <%= battle.adultonly ? "On" : "Off" %>
 
 |
+
 ⚡ Power Ups:
-<%= battle.powerups ? "Allowed" : "Not Allowed" %>
+
+<%= battle.powerups ? "Allowed" : "Disabled" %>
 
 |
+
 🔨 No Hammers:
-<%= battle.nohammers ? "Yes" : "No" %>
+
+<%= battle.nohammers ? "Enabled" : "Allowed" %>
 
 </div>
 
-<img class="poster"
-src="/poster/<%= battle.id %>">
+<img
+class="poster"
+src="/poster/<%= battle.id %>?t=<%= Date.now() %>">
 
-<% if(roleLevel === "owner" || roleLevel === "admin"){ %>
+<% if(roleLevel==="owner"||roleLevel==="admin"){ %>
 
-<div class="actions">
+<form
+action="/replace-poster/<%= battle.id %>"
+method="POST"
+enctype="multipart/form-data"
+class="poster-replace">
 
-<form action="/delete/<%= battle.id %>" method="POST">
-<button>Delete</button>
+<input
+type="file"
+name="poster"
+required>
+
+<button>
+
+Replace Poster
+
+</button>
+
 </form>
 
-</div>
+<form
+action="/delete/<%= battle.id %>"
+method="POST">
+
+<button>
+
+Delete Battle
+
+</button>
+
+</form>
 
 <% } %>
 

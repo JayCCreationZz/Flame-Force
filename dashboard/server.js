@@ -1,3 +1,5 @@
+require("dotenv").config();
+
 const express = require("express");
 const session = require("express-session");
 const passport = require("passport");
@@ -6,7 +8,6 @@ const multer = require("multer");
 const sharp = require("sharp");
 const fs = require("fs");
 const axios = require("axios");
-const FormData = require("form-data");
 
 const db = require("../database");
 
@@ -18,11 +19,9 @@ ROLE IDS
 const OWNER_ROLE = "1439255505053683804";
 const ADMIN_ROLE = "1439256200658157588";
 
-const CREATOR_ROLES = [
-  OWNER_ROLE,
-  ADMIN_ROLE
-];
-
+/*
+UPLOAD CONFIG
+*/
 const upload = multer({ dest: "tmp/" });
 
 /*
@@ -30,16 +29,18 @@ IMAGE PROCESSOR
 */
 async function processPoster(file) {
 
-  if (!file) return null;
+if(!file) return null;
 
-  const buffer = await sharp(file.path)
-    .resize(1080,1080,{fit:"cover"})
-    .jpeg({quality:92})
-    .toBuffer();
+const buffer =
+await sharp(file.path)
+.resize(1080,1080,{fit:"cover"})
+.jpeg({quality:92})
+.toBuffer();
 
-  fs.unlinkSync(file.path);
+fs.unlinkSync(file.path);
 
-  return buffer;
+return buffer;
+
 }
 
 /*
@@ -47,7 +48,9 @@ EXPRESS CONFIG
 */
 app.set("view engine","ejs");
 
-app.set("views", process.cwd()+"/dashboard/views");
+app.set("views",
+process.cwd()+"/dashboard/views"
+);
 
 app.use(express.static(
 process.cwd()+"/dashboard/public"
@@ -60,7 +63,7 @@ app.set("trust proxy",1);
 app.use(session({
 
 secret:
-process.env.SESSION_SECRET || "secret",
+process.env.SESSION_SECRET || "flame-force",
 
 resave:false,
 saveUninitialized:false,
@@ -94,13 +97,13 @@ passport.serializeUser((u,d)=>d(null,u));
 passport.deserializeUser((o,d)=>d(null,o));
 
 /*
-ROLE CHECK
+ROLE LOOKUP
 */
 async function getUserRoleLevel(req){
 
 try{
 
-const res =
+const response =
 await axios.get(
 
 `https://discord.com/api/v10/guilds/${process.env.GUILD_ID}/members/${req.user.id}`,
@@ -113,7 +116,7 @@ Authorization:`Bot ${process.env.TOKEN}`
 
 );
 
-const roles=res.data.roles;
+const roles=response.data.roles || [];
 
 if(roles.includes(OWNER_ROLE))
 return "owner";
@@ -121,84 +124,62 @@ return "owner";
 if(roles.includes(ADMIN_ROLE))
 return "admin";
 
-return "none";
+return "member";
 
-}catch{
+}catch(err){
 
-return "none";
+console.log("Role lookup error:",err.message);
+
+return "member";
 
 }
 
 }
 
 /*
-AUTH MIDDLEWARE
+AUTH CHECK
 */
 async function checkAuth(req,res,next){
 
 if(!req.isAuthenticated())
 return res.redirect("/");
 
-req.roleLevel =
+req.roleLevel=
 await getUserRoleLevel(req);
-
-if(req.roleLevel==="none")
-return res.send("Access denied");
 
 next();
 
 }
 
 /*
-FETCH MEMBERS
+POSTER ENDPOINT
 */
-async function getAgencyMembers(){
+app.get("/poster/:id", async(req,res)=>{
 
 try{
 
-const response =
-await axios.get(
-
-`https://discord.com/api/v10/guilds/${process.env.GUILD_ID}/members?limit=1000`,
-
-{
-headers:{
-Authorization:`Bot ${process.env.TOKEN}`
-}
-}
-
+const result=
+await db.query(
+"SELECT posterData FROM battles WHERE id=$1",
+[req.params.id]
 );
 
-return response.data
+if(!result.rows.length ||
+!result.rows[0].posterdata)
+return res.sendStatus(404);
 
-.filter(member =>
-member.roles.some(role =>
-CREATOR_ROLES.includes(role)
-)
-)
+res.set("Content-Type","image/jpeg");
 
-.map(member=>({
+res.send(result.rows[0].posterdata);
 
-id:member.user.id,
+}catch(err){
 
-name:
-member.nick ||
-member.user.global_name ||
-member.user.username
-
-}))
-
-.sort((a,b)=>
-a.name.localeCompare(b.name)
-);
-
-}catch{
-
-return [];
+console.log("Poster fetch error:",err.message);
+res.sendStatus(500);
 
 }
 
-}
+});
 
 /*
 LOGIN ROUTES
@@ -223,23 +204,67 @@ app.get("/logout",
 );
 
 /*
-SERVE POSTER FROM DATABASE
+FETCH AGENCY MEMBERS
 */
-app.get("/poster/:id", async (req,res)=>{
+async function getAgencyMembers(){
 
-const result =
-await db.query(
-"SELECT posterData FROM battles WHERE id=$1",
-[req.params.id]
+try{
+
+const response=
+await axios.get(
+
+`https://discord.com/api/v10/guilds/${process.env.GUILD_ID}/members?limit=1000`,
+
+{
+headers:{
+Authorization:`Bot ${process.env.TOKEN}`
+}
+}
+
 );
 
-if(!result.rows.length ||
-!result.rows[0].posterdata)
-return res.sendStatus(404);
+return response.data.map(member=>({
 
-res.set("Content-Type","image/jpeg");
+id:member.user.id,
 
-res.send(result.rows[0].posterdata);
+name:
+member.nick ||
+member.user.global_name ||
+member.user.username
+
+}));
+
+}catch(err){
+
+console.log("Member fetch error:",err.message);
+return [];
+
+}
+
+}
+
+/*
+DEBUG ROLE ROUTE
+*/
+app.get("/debug-roles", async(req,res)=>{
+
+if(!req.user)
+return res.send("Not logged in");
+
+const response=
+await axios.get(
+
+`https://discord.com/api/v10/guilds/${process.env.GUILD_ID}/members/${req.user.id}`,
+
+{
+headers:{
+Authorization:`Bot ${process.env.TOKEN}`
+}
+}
+
+);
+
+res.json(response.data.roles);
 
 });
 
@@ -252,12 +277,12 @@ checkAuth,
 
 async(req,res)=>{
 
-const battlesRaw =
+const battlesRaw=
 await db.query(
 "SELECT * FROM battles ORDER BY date,time"
 );
 
-const members =
+const members=
 await getAgencyMembers();
 
 const memberMap={};
@@ -266,10 +291,10 @@ members.forEach(m=>{
 memberMap[m.id]=m.name;
 });
 
-const battles =
+const battles=
 battlesRaw.rows.map(b=>{
 
-b.hostName =
+b.hostName=
 memberMap[b.host] || b.host;
 
 return b;
@@ -279,8 +304,8 @@ return b;
 res.render("dashboard",{
 
 battles,
-roleLevel:req.roleLevel,
-agencyMembers:members
+agencyMembers:members,
+roleLevel:req.roleLevel
 
 });
 
@@ -297,25 +322,10 @@ upload.single("poster"),
 
 async(req,res)=>{
 
-if(!["owner","admin"]
-.includes(req.roleLevel))
+if(!["owner","admin"].includes(req.roleLevel))
 return res.send("Permission denied");
 
-const{
-
-host,
-opponent,
-date,
-time,
-liveLink,
-managerGifting,
-adultOnly,
-powerUps,
-noHammers
-
-}=req.body;
-
-const poster =
+const posterBuffer=
 await processPoster(req.file);
 
 await db.query(
@@ -328,22 +338,22 @@ powerUps,noHammers)
 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
 
 [
-host,
-opponent,
-date,
-time,
-poster,
-liveLink,
-managerGifting==="true",
-adultOnly==="true",
-powerUps==="true",
-noHammers==="true"
+req.body.host,
+req.body.opponent,
+req.body.date,
+req.body.time,
+posterBuffer,
+req.body.liveLink,
+req.body.managerGifting==="true",
+req.body.adultOnly==="true",
+req.body.powerUps==="true",
+req.body.noHammers==="true"
 ]
 
 );
 
 /*
-POST TO DISCORD
+AUTO POST TO DISCORD
 */
 try{
 
@@ -352,29 +362,28 @@ await axios.post(
 `https://discord.com/api/v10/channels/${process.env.BATTLE_CHANNEL_ID}/messages`,
 
 {
-
 content:
 
-`🔥 **Flame Force Battle Scheduled**
+`🔥 **Battle Scheduled**
 
-⚔ <@${host}> vs ${opponent}
+⚔ <@${req.body.host}> vs ${req.body.opponent}
 
-📅 ${date}
-⏰ ${time}
+📅 ${req.body.date}
+⏰ ${req.body.time}
 
 🎁 Manager Gifting:
-${managerGifting==="true"?"Allowed ✅":"Not Allowed ❌"}
+${req.body.managerGifting==="true"?"Allowed":"Disabled"}
 
 🔞 18+:
-${adultOnly==="true"?"Enabled 🔞":"Disabled"}
+${req.body.adultOnly==="true"?"Enabled":"Disabled"}
 
-⚡ Power-Ups:
-${powerUps==="true"?"Allowed ⚡":"Not Allowed ❌"}
+⚡ Power Ups:
+${req.body.powerUps==="true"?"Allowed":"Disabled"}
 
-🔨 Hammers:
-${noHammers==="true"?"No Hammers ❌":"Allowed 🔨"}
+🔨 No Hammers:
+${req.body.noHammers==="true"?"Enabled":"Disabled"}
 
-${liveLink||""}`
+${req.body.liveLink || ""}`
 
 },
 
@@ -388,7 +397,7 @@ Authorization:`Bot ${process.env.TOKEN}`
 
 }catch(err){
 
-console.log("Discord post failed");
+console.log("Discord post failed:",err.message);
 
 }
 
@@ -397,9 +406,9 @@ res.redirect("/dashboard");
 });
 
 /*
-EDIT
+REPLACE POSTER
 */
-app.post("/edit/:id",
+app.post("/replace-poster/:id",
 
 checkAuth,
 
@@ -407,105 +416,35 @@ upload.single("poster"),
 
 async(req,res)=>{
 
-if(!["owner","admin"]
-.includes(req.roleLevel))
-return res.send("Permission denied");
+if(!["owner","admin"].includes(req.roleLevel))
+return res.redirect("/dashboard");
 
-const{
-
-host,
-opponent,
-date,
-time,
-liveLink,
-managerGifting,
-adultOnly,
-powerUps,
-noHammers
-
-}=req.body;
-
-const poster =
+const posterBuffer=
 await processPoster(req.file);
 
-if(poster){
-
 await db.query(
 
-`UPDATE battles
-SET host=$1,
-opponent=$2,
-date=$3,
-time=$4,
-posterData=$5,
-liveLink=$6,
-managerGifting=$7,
-adultOnly=$8,
-powerUps=$9,
-noHammers=$10
-WHERE id=$11`,
+"UPDATE battles SET posterData=$1 WHERE id=$2",
 
-[
-host,
-opponent,
-date,
-time,
-poster,
-liveLink,
-managerGifting==="true",
-adultOnly==="true",
-powerUps==="true",
-noHammers==="true",
-req.params.id
-]
+[posterBuffer,req.params.id]
 
 );
-
-}else{
-
-await db.query(
-
-`UPDATE battles
-SET host=$1,
-opponent=$2,
-date=$3,
-time=$4,
-liveLink=$5,
-managerGifting=$6,
-adultOnly=$7,
-powerUps=$8,
-noHammers=$9
-WHERE id=$10`,
-
-[
-host,
-opponent,
-date,
-time,
-liveLink,
-managerGifting==="true",
-adultOnly==="true",
-powerUps==="true",
-noHammers==="true",
-req.params.id
-]
-
-);
-
-}
 
 res.redirect("/dashboard");
 
 });
 
 /*
-DELETE
+DELETE BATTLE
 */
 app.post("/delete/:id",
 
 checkAuth,
 
 async(req,res)=>{
+
+if(!["owner","admin"].includes(req.roleLevel))
+return res.redirect("/dashboard");
 
 await db.query(
 "DELETE FROM battles WHERE id=$1",
@@ -519,11 +458,9 @@ res.redirect("/dashboard");
 /*
 CALENDAR
 */
-app.get("/calendar",
+app.get("/calendar", async(req,res)=>{
 
-async(req,res)=>{
-
-const battles =
+const battles=
 await db.query(
 "SELECT * FROM battles ORDER BY date,time"
 );
@@ -540,9 +477,13 @@ userId:req.user?.id||null
 /*
 START SERVER
 */
-const PORT =
+const PORT=
 process.env.PORT || 8080;
 
-app.listen(PORT,()=>
-console.log(`🔥 Dashboard running on ${PORT}`)
+app.listen(PORT,()=>{
+
+console.log(
+`🔥 Flame Force dashboard running on ${PORT}`
 );
+
+});
