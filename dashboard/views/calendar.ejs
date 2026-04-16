@@ -15,8 +15,6 @@ background:linear-gradient(180deg,#0b0b0b,#151515);
 color:white;
 }
 
-/* HEADER */
-
 header{
 display:flex;
 justify-content:space-between;
@@ -28,8 +26,6 @@ position:sticky;
 top:0;
 z-index:999;
 }
-
-/* LOGO */
 
 .logo{
 display:flex;
@@ -47,8 +43,6 @@ animation:glowPulse 2.5s infinite alternate ease-in-out;
 100%{filter:drop-shadow(0 0 22px #ffaa00);}
 }
 
-/* NAV */
-
 .nav a{
 margin-left:24px;
 color:#ff6600;
@@ -56,15 +50,11 @@ font-weight:600;
 text-decoration:none;
 }
 
-/* WRAPPER */
-
 .wrapper{
 padding:40px;
 max-width:1300px;
 margin:auto;
 }
-
-/* SECTION TITLE */
 
 .section-title{
 margin:40px 0 20px 0;
@@ -73,15 +63,11 @@ border-bottom:1px solid #333;
 padding-bottom:6px;
 }
 
-/* GRID */
-
 .calendar-grid{
 display:grid;
 grid-template-columns:repeat(auto-fill,minmax(320px,1fr));
 gap:28px;
 }
-
-/* CARD */
 
 .card{
 background:#1b1b1b;
@@ -89,6 +75,7 @@ border-radius:16px;
 padding:22px;
 box-shadow:0 0 18px rgba(255,100,0,.12);
 transition:.25s;
+position:relative;
 }
 
 .card:hover{
@@ -96,15 +83,11 @@ transform:translateY(-6px);
 box-shadow:0 0 30px rgba(255,120,0,.25);
 }
 
-/* POSTER */
-
 .poster{
 width:100%;
 border-radius:12px;
 margin-top:12px;
 }
-
-/* META */
 
 .meta{
 opacity:.75;
@@ -112,14 +95,37 @@ font-size:14px;
 margin-top:6px;
 }
 
-/* LINK */
-
 .link{
 margin-top:12px;
 display:inline-block;
 color:#ffaa00;
 font-weight:600;
 text-decoration:none;
+}
+
+/* LIVE STATUS BADGES */
+
+.badge{
+position:absolute;
+top:14px;
+right:14px;
+padding:6px 10px;
+border-radius:6px;
+font-size:12px;
+font-weight:bold;
+}
+
+.live{
+background:#ff2222;
+}
+
+.soon{
+background:#ff8800;
+}
+
+.today{
+background:#ffaa00;
+color:black;
 }
 
 </style>
@@ -145,6 +151,30 @@ text-decoration:none;
 <div class="wrapper">
 
 <%
+
+const now = new Date();
+
+function getStatus(battle){
+
+const battleDateTime =
+new Date(`${battle.date}T${battle.time}`);
+
+const diffMinutes =
+(battleDateTime - now) / 60000;
+
+if(diffMinutes <= 60 && diffMinutes >= -60)
+return "live";
+
+if(diffMinutes <= 30 && diffMinutes > 0)
+return "soon";
+
+if(diffMinutes <= 1440 && diffMinutes > 0)
+return "today";
+
+return "normal";
+
+}
+
 const today = new Date();
 today.setHours(0,0,0,0);
 
@@ -154,17 +184,30 @@ tomorrow.setDate(today.getDate()+1);
 const weekAhead = new Date(today);
 weekAhead.setDate(today.getDate()+7);
 
-function groupBattles(rangeStart, rangeEnd){
+function groupBattles(start,end){
 return battles.filter(b=>{
 const d = new Date(b.date);
-return d >= rangeStart && d < rangeEnd;
+return d >= start && d < end;
 });
 }
 
-const todayBattles = groupBattles(today,tomorrow);
-const tomorrowBattles = groupBattles(tomorrow,new Date(tomorrow.getTime()+86400000));
-const weekBattles = groupBattles(new Date(tomorrow.getTime()+86400000),weekAhead);
-const laterBattles = battles.filter(b=>{
+const todayBattles =
+groupBattles(today,tomorrow);
+
+const tomorrowBattles =
+groupBattles(
+tomorrow,
+new Date(tomorrow.getTime()+86400000)
+);
+
+const weekBattles =
+groupBattles(
+new Date(tomorrow.getTime()+86400000),
+weekAhead
+);
+
+const laterBattles =
+battles.filter(b=>{
 const d = new Date(b.date);
 return d >= weekAhead;
 });
@@ -174,13 +217,31 @@ function renderSection(title,list){
 
 <% if(list.length){ %>
 
-<h2 class="section-title"><%= title %></h2>
+<h2 class="section-title">
+<%= title %>
+</h2>
 
 <div class="calendar-grid">
 
-<% list.forEach(battle=>{ %>
+<% list.forEach(battle=>{
+
+const status = getStatus(battle);
+
+%>
 
 <div class="card">
+
+<% if(status==="live"){ %>
+<div class="badge live">LIVE NOW 🔴</div>
+<% } %>
+
+<% if(status==="soon"){ %>
+<div class="badge soon">Starting Soon ⏳</div>
+<% } %>
+
+<% if(status==="today"){ %>
+<div class="badge today">Later Today</div>
+<% } %>
 
 <h3>
 ⚔ <%= battle.host %> vs <%= battle.opponent %>
