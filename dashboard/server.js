@@ -14,8 +14,7 @@ const db = require("../database");
 const app = express();
 
 /*
-ROLE CONFIG
-Replace only if roles change
+ROLE CONFIG (Dashboard access control)
 */
 const config = {
   ownerRoles: ["1465436891238367284"],
@@ -24,7 +23,17 @@ const config = {
 };
 
 /*
-POSTER UPLOAD CONFIG
+CREATOR ROLE FILTER (Dropdown list)
+Only these appear in selector
+*/
+const creatorRoles = [
+  "1458157807361720426", // Spark
+  "1493636042354331779", // Blaze
+  "1465436891238367284"  // Owner
+];
+
+/*
+UPLOAD CONFIG
 */
 const upload = multer({
   dest: path.join(process.cwd(), "dashboard/public/posters/tmp")
@@ -64,7 +73,7 @@ async function processPoster(file) {
 }
 
 /*
-VIEW ENGINE
+EXPRESS CONFIG
 */
 app.set("view engine", "ejs");
 
@@ -117,7 +126,7 @@ passport.serializeUser((u, d) => d(null, u));
 passport.deserializeUser((o, d) => d(null, o));
 
 /*
-ROLE LOOKUP FUNCTION
+ROLE LOOKUP
 */
 async function getUserRoleLevel(req) {
 
@@ -173,13 +182,52 @@ async function checkAuth(req, res, next) {
 }
 
 /*
+FETCH CREATOR LIST FOR DROPDOWN
+*/
+async function getAgencyMembers() {
+
+  try {
+
+    const response = await axios.get(
+      `https://discord.com/api/v10/guilds/${process.env.GUILD_ID}/members?limit=1000`,
+      {
+        headers: {
+          Authorization: `Bot ${process.env.TOKEN}`
+        }
+      }
+    );
+
+    return response.data
+      .filter(member =>
+        member.roles.some(role =>
+          creatorRoles.includes(role)
+        )
+      )
+      .map(member => ({
+        id: member.user.id,
+        name: member.nick || member.user.username
+      }));
+
+  } catch (err) {
+
+    console.log("Agency member fetch failed:", err.message);
+
+    return [];
+
+  }
+
+}
+
+/*
 LOGIN ROUTES
 */
 app.get("/", (req, res) =>
-  res.render("login"));
+  res.render("login")
+);
 
 app.get("/login",
-  passport.authenticate("discord"));
+  passport.authenticate("discord")
+);
 
 app.get(
   "/auth/callback",
@@ -197,37 +245,7 @@ app.get("/logout", (req, res) =>
 );
 
 /*
-FETCH AGENCY MEMBERS FOR DROPDOWN
-*/
-async function getAgencyMembers() {
-
-  try {
-
-    const response = await axios.get(
-      `https://discord.com/api/v10/guilds/${process.env.GUILD_ID}/members?limit=1000`,
-      {
-        headers: {
-          Authorization: `Bot ${process.env.TOKEN}`
-        }
-      }
-    );
-
-    return response.data.map(member => ({
-      id: member.user.id,
-      name: member.nick || member.user.username
-    }));
-
-  } catch (err) {
-
-    console.log("Agency member fetch failed:", err.message);
-    return [];
-
-  }
-
-}
-
-/*
-DASHBOARD ROUTE
+DASHBOARD
 */
 app.get("/dashboard", checkAuth, async (req, res) => {
 
@@ -270,7 +288,7 @@ app.post(
   upload.single("poster"),
   async (req, res) => {
 
-    if (!["owner","admin"].includes(req.roleLevel))
+    if (!["owner", "admin"].includes(req.roleLevel))
       return res.send("Permission denied");
 
     const {
@@ -288,14 +306,7 @@ app.post(
       `INSERT INTO battles
       (host, opponent, date, time, poster, liveLink)
       VALUES ($1,$2,$3,$4,$5,$6)`,
-      [
-        host,
-        opponent,
-        date,
-        time,
-        poster,
-        liveLink
-      ]
+      [host, opponent, date, time, poster, liveLink]
     );
 
     /*
@@ -303,8 +314,7 @@ app.post(
     */
     try {
 
-      const form =
-        new FormData();
+      const form = new FormData();
 
       const message =
         `🔥 **Flame Force Battle Scheduled!** 🔥\n\n` +
@@ -357,12 +367,9 @@ app.post(
 /*
 DELETE BATTLE
 */
-app.post(
-  "/delete/:id",
-  checkAuth,
-  async (req, res) => {
+app.post("/delete/:id", checkAuth, async (req, res) => {
 
-  if (!["owner","admin"].includes(req.roleLevel))
+  if (!["owner", "admin"].includes(req.roleLevel))
     return res.send("Permission denied");
 
   await db.query(
