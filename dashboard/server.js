@@ -14,24 +14,24 @@ const db = require("../database");
 const app = express();
 
 /*
-ROLE CONFIG (Flame Force)
-Replace only if roles change later
+ROLE CONFIG
+Replace only if roles change
 */
 const config = {
-  ownerRoles: ["1439255505053683804"],
-  adminRoles: ["1471132938467803322"],
-  memberRoles: ["1439256200658157588"]
+  ownerRoles: ["1465436891238367284"],
+  adminRoles: ["1493636042354331779"],
+  memberRoles: ["1458157807361720426"]
 };
 
 /*
-UPLOAD STORAGE
+POSTER UPLOAD CONFIG
 */
 const upload = multer({
   dest: path.join(process.cwd(), "dashboard/public/posters/tmp")
 });
 
 /*
-AUTO RESIZE POSTER (TikTok square format)
+AUTO RESIZE POSTER TO 1080x1080
 */
 async function processPoster(file) {
 
@@ -117,7 +117,7 @@ passport.serializeUser((u, d) => d(null, u));
 passport.deserializeUser((o, d) => d(null, o));
 
 /*
-ROLE LOOKUP
+ROLE LOOKUP FUNCTION
 */
 async function getUserRoleLevel(req) {
 
@@ -127,7 +127,7 @@ async function getUserRoleLevel(req) {
       `https://discord.com/api/v10/guilds/${process.env.GUILD_ID}/members/${req.user.id}`,
       {
         headers: {
-          Authorization: `Bot ${process.env.TOKEN.trim()}`
+          Authorization: `Bot ${process.env.TOKEN}`
         }
       }
     );
@@ -148,7 +148,6 @@ async function getUserRoleLevel(req) {
   } catch (err) {
 
     console.log("Role lookup failed:", err.message);
-
     return "none";
 
   }
@@ -198,11 +197,39 @@ app.get("/logout", (req, res) =>
 );
 
 /*
-DASHBOARD VIEW
+FETCH AGENCY MEMBERS FOR DROPDOWN
 */
-app.get("/dashboard",
-  checkAuth,
-  async (req, res) => {
+async function getAgencyMembers() {
+
+  try {
+
+    const response = await axios.get(
+      `https://discord.com/api/v10/guilds/${process.env.GUILD_ID}/members?limit=1000`,
+      {
+        headers: {
+          Authorization: `Bot ${process.env.TOKEN}`
+        }
+      }
+    );
+
+    return response.data.map(member => ({
+      id: member.user.id,
+      name: member.nick || member.user.username
+    }));
+
+  } catch (err) {
+
+    console.log("Agency member fetch failed:", err.message);
+    return [];
+
+  }
+
+}
+
+/*
+DASHBOARD ROUTE
+*/
+app.get("/dashboard", checkAuth, async (req, res) => {
 
   try {
 
@@ -211,15 +238,24 @@ app.get("/dashboard",
         "SELECT * FROM battles ORDER BY date, time"
       );
 
+    const agencyMembers =
+      await getAgencyMembers();
+
     res.render("dashboard", {
       battles: result.rows,
-      roleLevel: req.roleLevel
+      roleLevel: req.roleLevel,
+      agencyMembers
     });
 
   } catch (err) {
 
-    console.error(err);
-    res.send("Database error");
+    console.log("Dashboard load error:", err.message);
+
+    res.render("dashboard", {
+      battles: [],
+      roleLevel: req.roleLevel,
+      agencyMembers: []
+    });
 
   }
 
@@ -234,8 +270,7 @@ app.post(
   upload.single("poster"),
   async (req, res) => {
 
-    if (!["owner", "admin"]
-      .includes(req.roleLevel))
+    if (!["owner","admin"].includes(req.roleLevel))
       return res.send("Permission denied");
 
     const {
@@ -249,31 +284,19 @@ app.post(
     const poster =
       await processPoster(req.file);
 
-    try {
-
-      await db.query(
-        `INSERT INTO battles
-        (host, opponent, date, time, poster, liveLink)
-        VALUES ($1,$2,$3,$4,$5,$6)`,
-        [
-          host,
-          opponent,
-          date,
-          time,
-          poster,
-          liveLink
-        ]
-      );
-
-      console.log("Battle saved successfully");
-
-    } catch (err) {
-
-      console.error("Insert failed:", err);
-
-      return res.send("Database insert failed");
-
-    }
+    await db.query(
+      `INSERT INTO battles
+      (host, opponent, date, time, poster, liveLink)
+      VALUES ($1,$2,$3,$4,$5,$6)`,
+      [
+        host,
+        opponent,
+        date,
+        time,
+        poster,
+        liveLink
+      ]
+    );
 
     /*
     POST TO DISCORD
@@ -283,14 +306,13 @@ app.post(
       const form =
         new FormData();
 
-      const messageText =
+      const message =
         `🔥 **Flame Force Battle Scheduled!** 🔥\n\n` +
-        `⚔ ${host} vs ${opponent}\n` +
+        `⚔ <@${host}> vs <@${opponent}>\n` +
         `📅 ${date} ⏰ ${time}\n\n` +
-        (liveLink ?
-          `🔗 ${liveLink}` : "");
+        (liveLink ? `🔗 ${liveLink}` : "");
 
-      form.append("content", messageText);
+      form.append("content", message);
 
       if (poster) {
 
@@ -324,10 +346,7 @@ app.post(
 
     } catch (err) {
 
-      console.log(
-        "Discord post failed:",
-        err.message
-      );
+      console.log("Discord post failed:", err.message);
 
     }
 
@@ -343,8 +362,7 @@ app.post(
   checkAuth,
   async (req, res) => {
 
-  if (!["owner", "admin"]
-    .includes(req.roleLevel))
+  if (!["owner","admin"].includes(req.roleLevel))
     return res.send("Permission denied");
 
   await db.query(
@@ -359,8 +377,7 @@ app.post(
 /*
 CALENDAR VIEW
 */
-app.get("/calendar",
-  async (req, res) => {
+app.get("/calendar", async (req, res) => {
 
   const result =
     await db.query(
