@@ -8,6 +8,7 @@ const multer = require("multer");
 const sharp = require("sharp");
 const fs = require("fs");
 const axios = require("axios");
+const FormData = require("form-data");
 
 const db = require("../database");
 
@@ -25,7 +26,7 @@ UPLOAD CONFIG
 const upload = multer({ dest: "tmp/" });
 
 /*
-IMAGE PROCESSOR
+POSTER PROCESSOR
 */
 async function processPoster(file) {
 
@@ -48,7 +49,8 @@ EXPRESS CONFIG
 */
 app.set("view engine","ejs");
 
-app.set("views",
+app.set(
+"views",
 process.cwd()+"/dashboard/views"
 );
 
@@ -175,6 +177,7 @@ res.send(result.rows[0].posterdata);
 }catch(err){
 
 console.log("Poster fetch error:",err.message);
+
 res.sendStatus(500);
 
 }
@@ -186,25 +189,29 @@ LOGIN ROUTES
 */
 app.get("/",(req,res)=>res.render("login"));
 
-app.get("/login",
+app.get(
+"/login",
 passport.authenticate("discord")
 );
 
-app.get("/auth/callback",
+app.get(
+"/auth/callback",
 
-passport.authenticate("discord",
-{failureRedirect:"/"}),
+passport.authenticate(
+"discord",
+{failureRedirect:"/"}
+),
 
 (req,res)=>res.redirect("/dashboard")
-
 );
 
-app.get("/logout",
+app.get(
+"/logout",
 (req,res)=>req.logout(()=>res.redirect("/"))
 );
 
 /*
-FETCH AGENCY MEMBERS
+FETCH DISCORD MEMBERS
 */
 async function getAgencyMembers(){
 
@@ -237,6 +244,7 @@ member.user.username
 }catch(err){
 
 console.log("Member fetch error:",err.message);
+
 return [];
 
 }
@@ -271,7 +279,8 @@ res.json(response.data.roles);
 /*
 DASHBOARD
 */
-app.get("/dashboard",
+app.get(
+"/dashboard",
 
 checkAuth,
 
@@ -314,7 +323,8 @@ roleLevel:req.roleLevel
 /*
 CREATE BATTLE
 */
-app.post("/create",
+app.post(
+"/create",
 
 checkAuth,
 
@@ -353,16 +363,15 @@ req.body.noHammers==="true"
 );
 
 /*
-AUTO POST TO DISCORD
+DISCORD ANNOUNCEMENT
 */
 try{
 
-await axios.post(
+const form=new FormData();
 
-`https://discord.com/api/v10/channels/${process.env.BATTLE_CHANNEL_ID}/messages`,
+form.append(
 
-{
-content:
+"content",
 
 `🔥 **Battle Scheduled**
 
@@ -384,12 +393,31 @@ ${req.body.powerUps==="true"?"Allowed":"Disabled"}
 ${req.body.noHammers==="true"?"Enabled":"Disabled"}
 
 ${req.body.liveLink || ""}`
+);
 
-},
+if(posterBuffer){
+
+form.append(
+"files[0]",
+posterBuffer,
+{
+filename:"battle.jpg",
+contentType:"image/jpeg"
+}
+);
+
+}
+
+await axios.post(
+
+`https://discord.com/api/v10/channels/${process.env.BATTLE_CHANNEL_ID}/messages`,
+
+form,
 
 {
 headers:{
-Authorization:`Bot ${process.env.TOKEN}`
+Authorization:`Bot ${process.env.TOKEN}`,
+...form.getHeaders()
 }
 }
 
@@ -408,7 +436,8 @@ res.redirect("/dashboard");
 /*
 REPLACE POSTER
 */
-app.post("/replace-poster/:id",
+app.post(
+"/replace-poster/:id",
 
 checkAuth,
 
@@ -427,7 +456,6 @@ await db.query(
 "UPDATE battles SET posterData=$1 WHERE id=$2",
 
 [posterBuffer,req.params.id]
-
 );
 
 res.redirect("/dashboard");
@@ -437,7 +465,8 @@ res.redirect("/dashboard");
 /*
 DELETE BATTLE
 */
-app.post("/delete/:id",
+app.post(
+"/delete/:id",
 
 checkAuth,
 
@@ -458,7 +487,10 @@ res.redirect("/dashboard");
 /*
 CALENDAR
 */
-app.get("/calendar", async(req,res)=>{
+app.get(
+"/calendar",
+
+async(req,res)=>{
 
 const battles=
 await db.query(
