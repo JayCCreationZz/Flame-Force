@@ -27,12 +27,6 @@ top:0;
 z-index:999;
 }
 
-.logo{
-display:flex;
-align-items:center;
-gap:12px;
-}
-
 .logo img{
 height:48px;
 animation:glowPulse 2.5s infinite alternate ease-in-out;
@@ -83,6 +77,13 @@ transform:translateY(-6px);
 box-shadow:0 0 30px rgba(255,120,0,.25);
 }
 
+/* PERSONAL HIGHLIGHT */
+
+.yours{
+border:2px solid #ffaa00;
+box-shadow:0 0 28px rgba(255,170,0,.35);
+}
+
 .poster{
 width:100%;
 border-radius:12px;
@@ -103,7 +104,7 @@ font-weight:600;
 text-decoration:none;
 }
 
-/* LIVE STATUS BADGES */
+/* STATUS BADGES */
 
 .badge{
 position:absolute;
@@ -115,18 +116,9 @@ font-size:12px;
 font-weight:bold;
 }
 
-.live{
-background:#ff2222;
-}
-
-.soon{
-background:#ff8800;
-}
-
-.today{
-background:#ffaa00;
-color:black;
-}
+.live{ background:#ff2222; }
+.soon{ background:#ff8800; }
+.today{ background:#ffaa00; color:black; }
 
 </style>
 </head>
@@ -137,7 +129,6 @@ color:black;
 
 <div class="logo">
 <img src="/logo.png">
-<h2>Flame Force Battle Calendar</h2>
 </div>
 
 <div class="nav">
@@ -156,24 +147,26 @@ const now = new Date();
 
 function getStatus(battle){
 
-const battleDateTime =
+const dt =
 new Date(`${battle.date}T${battle.time}`);
 
-const diffMinutes =
-(battleDateTime - now) / 60000;
+const diff =
+(dt - now)/60000;
 
-if(diffMinutes <= 60 && diffMinutes >= -60)
-return "live";
-
-if(diffMinutes <= 30 && diffMinutes > 0)
-return "soon";
-
-if(diffMinutes <= 1440 && diffMinutes > 0)
-return "today";
+if(diff <= 60 && diff >= -60) return "live";
+if(diff <= 30 && diff > 0) return "soon";
+if(diff <= 1440 && diff > 0) return "today";
 
 return "normal";
-
 }
+
+/* USER BATTLES */
+
+const myBattles = battles.filter(
+b => b.host === userId
+);
+
+/* DATE GROUPING */
 
 const today = new Date();
 today.setHours(0,0,0,0);
@@ -184,52 +177,28 @@ tomorrow.setDate(today.getDate()+1);
 const weekAhead = new Date(today);
 weekAhead.setDate(today.getDate()+7);
 
-function groupBattles(start,end){
+function group(start,end){
 return battles.filter(b=>{
-const d = new Date(b.date);
-return d >= start && d < end;
+const d=new Date(b.date);
+return d>=start && d<end;
 });
 }
 
-const todayBattles =
-groupBattles(today,tomorrow);
+const todayBattles=group(today,tomorrow);
+const tomorrowBattles=group(tomorrow,new Date(tomorrow.getTime()+86400000));
+const weekBattles=group(new Date(tomorrow.getTime()+86400000),weekAhead);
+const laterBattles=battles.filter(b=>new Date(b.date)>=weekAhead);
 
-const tomorrowBattles =
-groupBattles(
-tomorrow,
-new Date(tomorrow.getTime()+86400000)
-);
+function render(list){
 
-const weekBattles =
-groupBattles(
-new Date(tomorrow.getTime()+86400000),
-weekAhead
-);
+list.forEach(battle=>{
 
-const laterBattles =
-battles.filter(b=>{
-const d = new Date(b.date);
-return d >= weekAhead;
-});
-
-function renderSection(title,list){
-%>
-
-<% if(list.length){ %>
-
-<h2 class="section-title">
-<%= title %>
-</h2>
-
-<div class="calendar-grid">
-
-<% list.forEach(battle=>{
-
-const status = getStatus(battle);
+const status=getStatus(battle);
+const mine=(battle.host===userId);
 
 %>
 
-<div class="card">
+<div class="card <%= mine ? "yours" : "" %>">
 
 <% if(status==="live"){ %>
 <div class="badge live">LIVE NOW 🔴</div>
@@ -256,42 +225,56 @@ const status = getStatus(battle);
 </div>
 
 <% if(battle.poster){ %>
-
-<img
-class="poster"
-src="<%= battle.poster %>">
-
+<img class="poster" src="<%= battle.poster %>">
 <% } %>
 
 <% if(battle.liveLink){ %>
-
-<a
-class="link"
+<a class="link"
 href="<%= battle.liveLink %>"
 target="_blank">
-
 Watch Live 🔴
-
 </a>
-
 <% } %>
 
 </div>
-
-<% }) %>
-
-</div>
-
-<% } %>
 
 <%
+});
 }
 %>
 
-<% renderSection("🔴 Today",todayBattles); %>
-<% renderSection("🟠 Tomorrow",tomorrowBattles); %>
-<% renderSection("🟡 This Week",weekBattles); %>
-<% renderSection("⚫ Later Battles",laterBattles); %>
+<% if(myBattles.length){ %>
+
+<h2 class="section-title">
+⭐ Your Battles
+</h2>
+
+<div class="calendar-grid">
+<% render(myBattles); %>
+</div>
+
+<% } %>
+
+
+<h2 class="section-title">🔴 Today</h2>
+<div class="calendar-grid">
+<% render(todayBattles); %>
+</div>
+
+<h2 class="section-title">🟠 Tomorrow</h2>
+<div class="calendar-grid">
+<% render(tomorrowBattles); %>
+</div>
+
+<h2 class="section-title">🟡 This Week</h2>
+<div class="calendar-grid">
+<% render(weekBattles); %>
+</div>
+
+<h2 class="section-title">⚫ Later Battles</h2>
+<div class="calendar-grid">
+<% render(laterBattles); %>
+</div>
 
 </div>
 
