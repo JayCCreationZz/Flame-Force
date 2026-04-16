@@ -1,282 +1,131 @@
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>Flame Force Battle Calendar</title>
+const express = require("express");
+const router = express.Router();
+const db = require("../database");
+const axios = require("axios");
 
-<link rel="icon" href="/favicon.png">
+/*
+CREATOR ROLE IDS
+(same ones used in server.js)
+*/
+const CREATOR_ROLES = [
+  "1439255505053683804",
+  "1439256200658157588"
+];
 
-<style>
+/*
+FETCH DISCORD MEMBERS
+*/
+async function getAgencyMembers() {
 
-body{
-margin:0;
-font-family:Segoe UI,Arial;
-background:linear-gradient(180deg,#0b0b0b,#151515);
-color:white;
+  try {
+
+    const response =
+      await axios.get(
+
+        `https://discord.com/api/v10/guilds/${process.env.GUILD_ID}/members?limit=1000`,
+
+        {
+          headers:{
+            Authorization:
+            `Bot ${process.env.TOKEN}`
+          }
+        }
+
+      );
+
+    return response.data
+
+      .filter(member =>
+        member.roles.some(role =>
+          CREATOR_ROLES.includes(role)
+        )
+      )
+
+      .map(member => ({
+
+        id: member.user.id,
+
+        name:
+          member.nick ||
+          member.user.global_name ||
+          member.user.username
+
+      }));
+
+  }
+
+  catch(err){
+
+    console.log(
+      "Calendar member fetch failed:",
+      err.message
+    );
+
+    return [];
+
+  }
+
 }
 
-header{
-display:flex;
-justify-content:space-between;
-align-items:center;
-padding:18px 40px;
-background:#0f0f0f;
-border-bottom:2px solid #ff6600;
-position:sticky;
-top:0;
-z-index:999;
-}
+/*
+CALENDAR ROUTE
+*/
+router.get("/", async (req,res)=>{
 
-.logo img{
-height:48px;
-animation:glowPulse 2.5s infinite alternate ease-in-out;
-}
+  try {
 
-@keyframes glowPulse{
-0%{filter:drop-shadow(0 0 6px #ff6600);}
-100%{filter:drop-shadow(0 0 22px #ffaa00);}
-}
+    const battlesRaw =
+      await db.query(
+        "SELECT * FROM battles ORDER BY date,time"
+      );
 
-.nav a{
-margin-left:24px;
-color:#ff6600;
-font-weight:600;
-text-decoration:none;
-}
+    const agencyMembers =
+      await getAgencyMembers();
 
-.wrapper{
-padding:40px;
-max-width:1300px;
-margin:auto;
-}
+/*
+BUILD ID → NAME MAP
+*/
+    const memberMap = {};
 
-.section-title{
-margin:40px 0 20px 0;
-color:#ffaa00;
-border-bottom:1px solid #333;
-padding-bottom:6px;
-}
+    agencyMembers.forEach(member=>{
+      memberMap[member.id] =
+        member.name;
+    });
 
-.calendar-grid{
-display:grid;
-grid-template-columns:repeat(auto-fill,minmax(320px,1fr));
-gap:28px;
-}
+/*
+ATTACH DISPLAY NAMES
+*/
+    const battles =
+      battlesRaw.rows.map(battle=>{
 
-.card{
-background:#1b1b1b;
-border-radius:16px;
-padding:22px;
-box-shadow:0 0 18px rgba(255,100,0,.12);
-transition:.25s;
-position:relative;
-}
+        battle.hostName =
+          memberMap[battle.host] ||
+          battle.host;
 
-.card:hover{
-transform:translateY(-6px);
-box-shadow:0 0 30px rgba(255,120,0,.25);
-}
+        return battle;
 
-/* PERSONAL HIGHLIGHT */
+      });
 
-.yours{
-border:2px solid #ffaa00;
-box-shadow:0 0 28px rgba(255,170,0,.35);
-}
+    res.render("calendar",{
 
-.poster{
-width:100%;
-border-radius:12px;
-margin-top:12px;
-}
+      battles,
+      userId:req.user?.id || null
 
-.meta{
-opacity:.75;
-font-size:14px;
-margin-top:6px;
-}
+    });
 
-.link{
-margin-top:12px;
-display:inline-block;
-color:#ffaa00;
-font-weight:600;
-text-decoration:none;
-}
+  }
 
-/* STATUS BADGES */
+  catch(err){
 
-.badge{
-position:absolute;
-top:14px;
-right:14px;
-padding:6px 10px;
-border-radius:6px;
-font-size:12px;
-font-weight:bold;
-}
+    console.log(
+      "Calendar route error:",
+      err.message
+    );
 
-.live{ background:#ff2222; }
-.soon{ background:#ff8800; }
-.today{ background:#ffaa00; color:black; }
+    res.sendStatus(500);
 
-</style>
-</head>
+  }
 
-<body>
-
-<header>
-
-<div class="logo">
-<img src="/logo.png">
-</div>
-
-<div class="nav">
-<a href="/dashboard">Dashboard</a>
-<a href="/calendar">Calendar</a>
-<a href="/logout">Logout</a>
-</div>
-
-</header>
-
-<div class="wrapper">
-
-<%
-
-const now = new Date();
-
-function getStatus(battle){
-
-const dt =
-new Date(`${battle.date}T${battle.time}`);
-
-const diff =
-(dt - now)/60000;
-
-if(diff <= 60 && diff >= -60) return "live";
-if(diff <= 30 && diff > 0) return "soon";
-if(diff <= 1440 && diff > 0) return "today";
-
-return "normal";
-}
-
-/* USER BATTLES */
-
-const myBattles = battles.filter(
-b => b.host === userId
-);
-
-/* DATE GROUPING */
-
-const today = new Date();
-today.setHours(0,0,0,0);
-
-const tomorrow = new Date(today);
-tomorrow.setDate(today.getDate()+1);
-
-const weekAhead = new Date(today);
-weekAhead.setDate(today.getDate()+7);
-
-function group(start,end){
-return battles.filter(b=>{
-const d=new Date(b.date);
-return d>=start && d<end;
 });
-}
 
-const todayBattles=group(today,tomorrow);
-const tomorrowBattles=group(tomorrow,new Date(tomorrow.getTime()+86400000));
-const weekBattles=group(new Date(tomorrow.getTime()+86400000),weekAhead);
-const laterBattles=battles.filter(b=>new Date(b.date)>=weekAhead);
-
-function render(list){
-
-list.forEach(battle=>{
-
-const status=getStatus(battle);
-const mine=(battle.host===userId);
-
-%>
-
-<div class="card <%= mine ? "yours" : "" %>">
-
-<% if(status==="live"){ %>
-<div class="badge live">LIVE NOW 🔴</div>
-<% } %>
-
-<% if(status==="soon"){ %>
-<div class="badge soon">Starting Soon ⏳</div>
-<% } %>
-
-<% if(status==="today"){ %>
-<div class="badge today">Later Today</div>
-<% } %>
-
-<h3>
-⚔ <%= battle.host %> vs <%= battle.opponent %>
-</h3>
-
-<div class="meta">
-📅 <%= battle.date %>
-</div>
-
-<div class="meta">
-⏰ <%= battle.time %>
-</div>
-
-<% if(battle.poster){ %>
-<img class="poster" src="<%= battle.poster %>">
-<% } %>
-
-<% if(battle.liveLink){ %>
-<a class="link"
-href="<%= battle.liveLink %>"
-target="_blank">
-Watch Live 🔴
-</a>
-<% } %>
-
-</div>
-
-<%
-});
-}
-%>
-
-<% if(myBattles.length){ %>
-
-<h2 class="section-title">
-⭐ Your Battles
-</h2>
-
-<div class="calendar-grid">
-<% render(myBattles); %>
-</div>
-
-<% } %>
-
-
-<h2 class="section-title">🔴 Today</h2>
-<div class="calendar-grid">
-<% render(todayBattles); %>
-</div>
-
-<h2 class="section-title">🟠 Tomorrow</h2>
-<div class="calendar-grid">
-<% render(tomorrowBattles); %>
-</div>
-
-<h2 class="section-title">🟡 This Week</h2>
-<div class="calendar-grid">
-<% render(weekBattles); %>
-</div>
-
-<h2 class="section-title">⚫ Later Battles</h2>
-<div class="calendar-grid">
-<% render(laterBattles); %>
-</div>
-
-</div>
-
-</body>
-</html>
+module.exports = router;
