@@ -16,9 +16,7 @@ const client = new Client({
 
 
 /*
-==============================
 READY EVENT
-==============================
 */
 
 client.once("clientReady", () => {
@@ -29,9 +27,7 @@ client.once("clientReady", () => {
 
 
 /*
-==============================
-ROLE PING HELPER
-==============================
+ROLE PINGS
 */
 
 function getRoleMentions(guild) {
@@ -48,9 +44,7 @@ function getRoleMentions(guild) {
 
 
 /*
-==============================
 UK TIME HELPERS
-==============================
 */
 
 function getUKTime(offset = 0) {
@@ -76,9 +70,7 @@ function getUKDate() {
 
 
 /*
-==============================
-RULE BADGE FORMATTER
-==============================
+RULE BADGES
 */
 
 function formatRules(battle) {
@@ -107,14 +99,12 @@ function formatRules(battle) {
 
 
 /*
-==============================
 EMBED BUILDER
-==============================
 */
 
 function buildEmbed(battle, title) {
 
-  const embed = new EmbedBuilder()
+  return new EmbedBuilder()
 
     .setColor("#ff4d00")
 
@@ -125,77 +115,48 @@ function buildEmbed(battle, title) {
     )
 
     .addFields(
-      {
-        name: "📅 Date",
-        value: battle.date,
-        inline: true
-      },
-      {
-        name: "⏰ Time",
-        value: battle.time,
-        inline: true
-      },
-      {
-        name: "Battle Rules",
-        value: formatRules(battle)
-      }
+      { name: "📅 Date", value: battle.date, inline: true },
+      { name: "⏰ Time", value: battle.time, inline: true },
+      { name: "Battle Rules", value: formatRules(battle) }
     )
 
     .setFooter({
       text: "Flame Force Agency"
     });
 
-  return embed;
-
 }
 
 
 /*
-==============================
-SEND EMBED MESSAGE
-==============================
+SEND EMBED WITH POSTER
 */
 
 async function sendEmbed(channel, battle, title) {
 
-  try {
+  const embed = buildEmbed(battle, title);
 
-    const embed = buildEmbed(battle, title);
+  const payload = { embeds: [embed] };
 
-    const payload = {
-      embeds: [embed]
-    };
+  if (battle.posterdata) {
 
-    if (battle.posterdata) {
+    const attachment = new AttachmentBuilder(
+      Buffer.from(battle.posterdata),
+      { name: "battle.jpg" }
+    );
 
-      const attachment = new AttachmentBuilder(
-        Buffer.from(battle.posterdata),
-        { name: "battle.jpg" }
-      );
+    embed.setImage("attachment://battle.jpg");
 
-      embed.setImage("attachment://battle.jpg");
-
-      payload.files = [attachment];
-
-    }
-
-    await channel.send(payload);
+    payload.files = [attachment];
 
   }
 
-  catch (err) {
-
-    console.log("Embed send error:", err.message);
-
-  }
+  await channel.send(payload);
 
 }
 
 
 /*
-==============================
 REMINDER ENGINE
-==============================
 */
 
 cron.schedule("* * * * *", async () => {
@@ -215,19 +176,27 @@ cron.schedule("* * * * *", async () => {
 
     if (!result.rows.length) return;
 
+    const reminderChannel =
+      await client.channels.fetch(
+        process.env.REMINDER_CHANNEL_ID
+      );
+
+    if (!reminderChannel) {
+
+      console.log("❌ Reminder channel not found");
+      return;
+
+    }
+
+    const rolePing =
+      getRoleMentions(reminderChannel.guild);
+
+
     for (const battle of result.rows) {
-
-      const channel =
-        await client.channels.fetch(battle.channel);
-
-      if (!channel) continue;
-
-      const rolePing =
-        getRoleMentions(channel.guild);
 
 
       /*
-      30 MINUTE REMINDER
+      30 MIN REMINDER
       */
 
       if (
@@ -235,10 +204,10 @@ cron.schedule("* * * * *", async () => {
         !battle.reminder30
       ) {
 
-        await channel.send(rolePing);
+        await reminderChannel.send(rolePing);
 
         await sendEmbed(
-          channel,
+          reminderChannel,
           battle,
           "🔥 Battle Starting In 30 Minutes"
         );
@@ -252,7 +221,7 @@ cron.schedule("* * * * *", async () => {
 
 
       /*
-      10 MINUTE REMINDER
+      10 MIN REMINDER
       */
 
       if (
@@ -260,10 +229,10 @@ cron.schedule("* * * * *", async () => {
         !battle.reminder10
       ) {
 
-        await channel.send(rolePing);
+        await reminderChannel.send(rolePing);
 
         await sendEmbed(
-          channel,
+          reminderChannel,
           battle,
           "🔥 Final Call — Battle Starts Soon"
         );
@@ -285,10 +254,10 @@ cron.schedule("* * * * *", async () => {
         !battle.live
       ) {
 
-        await channel.send(rolePing);
+        await reminderChannel.send(rolePing);
 
         await sendEmbed(
-          channel,
+          reminderChannel,
           battle,
           "🔥 Battle LIVE NOW"
         );
@@ -316,9 +285,7 @@ cron.schedule("* * * * *", async () => {
 
 
 /*
-==============================
 LOGIN
-==============================
 */
 
 client.login(process.env.TOKEN);
