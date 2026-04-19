@@ -1,12 +1,19 @@
 require("dotenv").config();
 
-const { Client, GatewayIntentBits, AttachmentBuilder } = require("discord.js");
+const {
+  Client,
+  GatewayIntentBits,
+  AttachmentBuilder,
+  EmbedBuilder
+} = require("discord.js");
+
 const cron = require("node-cron");
 const db = require("./database");
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds]
 });
+
 
 /*
 ==============================
@@ -49,7 +56,6 @@ UK TIME HELPERS
 function getUKTime(offset = 0) {
 
   const now = new Date();
-
   now.setMinutes(now.getMinutes() + offset);
 
   return now.toLocaleTimeString("en-GB", {
@@ -59,7 +65,6 @@ function getUKTime(offset = 0) {
   });
 
 }
-
 
 function getUKDate() {
 
@@ -72,34 +77,115 @@ function getUKDate() {
 
 /*
 ==============================
-POST MESSAGE WITH POSTER
+RULE BADGE FORMATTER
 ==============================
 */
 
-async function sendBattleMessage(channel, battle, text) {
+function formatRules(battle) {
+
+  return [
+
+    battle.managergifting
+      ? "🎁 Manager Gifting Allowed"
+      : "🚫 Manager Gifting Disabled",
+
+    battle.adultonly
+      ? "🔞 18+ Battle"
+      : "🟢 All Ages",
+
+    battle.powerups
+      ? "⚡ Power Ups Enabled"
+      : "🚫 No Power Ups",
+
+    battle.nohammers
+      ? "🔨 No Hammers"
+      : "🟢 Hammers Allowed"
+
+  ].join("\n");
+
+}
+
+
+/*
+==============================
+EMBED BUILDER
+==============================
+*/
+
+function buildEmbed(battle, title) {
+
+  const embed = new EmbedBuilder()
+
+    .setColor("#ff4d00")
+
+    .setTitle(title)
+
+    .setDescription(
+      `⚔ <@${battle.host}> vs **${battle.opponent}**`
+    )
+
+    .addFields(
+      {
+        name: "📅 Date",
+        value: battle.date,
+        inline: true
+      },
+      {
+        name: "⏰ Time",
+        value: battle.time,
+        inline: true
+      },
+      {
+        name: "Battle Rules",
+        value: formatRules(battle)
+      }
+    )
+
+    .setFooter({
+      text: "Flame Force Agency"
+    });
+
+  return embed;
+
+}
+
+
+/*
+==============================
+SEND EMBED MESSAGE
+==============================
+*/
+
+async function sendEmbed(channel, battle, title) {
 
   try {
 
+    const embed = buildEmbed(battle, title);
+
     const payload = {
-      content: text
+      embeds: [embed]
     };
 
     if (battle.posterdata) {
 
-      payload.files = [
-        new AttachmentBuilder(
-          Buffer.from(battle.posterdata),
-          { name: "battle.jpg" }
-        )
-      ];
+      const attachment = new AttachmentBuilder(
+        Buffer.from(battle.posterdata),
+        { name: "battle.jpg" }
+      );
+
+      embed.setImage("attachment://battle.jpg");
+
+      payload.files = [attachment];
 
     }
 
     await channel.send(payload);
 
-  } catch (err) {
+  }
 
-    console.log("Poster send error:", err.message);
+  catch (err) {
+
+    console.log("Embed send error:", err.message);
 
   }
 
@@ -131,9 +217,8 @@ cron.schedule("* * * * *", async () => {
 
     for (const battle of result.rows) {
 
-      const channel = await client.channels.fetch(
-        battle.channel
-      );
+      const channel =
+        await client.channels.fetch(battle.channel);
 
       if (!channel) continue;
 
@@ -142,9 +227,7 @@ cron.schedule("* * * * *", async () => {
 
 
       /*
-      ==============================
       30 MINUTE REMINDER
-      ==============================
       */
 
       if (
@@ -152,22 +235,12 @@ cron.schedule("* * * * *", async () => {
         !battle.reminder30
       ) {
 
-        await sendBattleMessage(
+        await channel.send(rolePing);
 
+        await sendEmbed(
           channel,
           battle,
-
-`${rolePing}
-
-🔥 **BATTLE APPROACHING**
-
-⚔️ ${battle.host} vs ${battle.opponent}
-🕒 Begins in 30 minutes
-
-Prepare the arena.
-Charge your blessings.
-Flame Force moves soon.`
-
+          "🔥 Battle Starting In 30 Minutes"
         );
 
         await db.query(
@@ -179,9 +252,7 @@ Flame Force moves soon.`
 
 
       /*
-      ==============================
       10 MINUTE REMINDER
-      ==============================
       */
 
       if (
@@ -189,22 +260,12 @@ Flame Force moves soon.`
         !battle.reminder10
       ) {
 
-        await sendBattleMessage(
+        await channel.send(rolePing);
 
+        await sendEmbed(
           channel,
           battle,
-
-`${rolePing}
-
-🔥 **FINAL CALL TO ARMS**
-
-⚔️ ${battle.host} vs ${battle.opponent}
-🕒 Starts in 10 minutes
-
-Support squad assemble now.
-Momentum wins battles.
-Flame Force stands together.`
-
+          "🔥 Final Call — Battle Starts Soon"
         );
 
         await db.query(
@@ -216,9 +277,7 @@ Flame Force stands together.`
 
 
       /*
-      ==============================
       LIVE ALERT
-      ==============================
       */
 
       if (
@@ -226,23 +285,12 @@ Flame Force stands together.`
         !battle.live
       ) {
 
-        await sendBattleMessage(
+        await channel.send(rolePing);
 
+        await sendEmbed(
           channel,
           battle,
-
-`${rolePing}
-
-🔥 **BATTLE LIVE NOW**
-
-⚔️ ${battle.host} vs ${battle.opponent}
-
-Enter the arena.
-Send blessings.
-Push the victory.
-
-Flame Force does not spectate — we dominate.`
-
+          "🔥 Battle LIVE NOW"
         );
 
         await db.query(
@@ -254,70 +302,11 @@ Flame Force does not spectate — we dominate.`
 
     }
 
-  } catch (err) {
-
-    console.log("Reminder engine error:", err.message);
-
   }
 
-}, {
-  timezone: "Europe/London"
-});
+  catch (err) {
 
-
-/*
-==============================
-DAILY BATTLE BOARD
-==============================
-*/
-
-cron.schedule("0 9 * * *", async () => {
-
-  try {
-
-    const today = getUKDate();
-
-    const result = await db.query(
-      "SELECT * FROM battles WHERE date = $1 ORDER BY time ASC",
-      [today]
-    );
-
-    if (!result.rows.length) return;
-
-    const firstBattle = result.rows[0];
-
-    const channel = await client.channels.fetch(
-      firstBattle.channel
-    );
-
-    if (!channel) return;
-
-    const rolePing =
-      getRoleMentions(channel.guild);
-
-    let message = `${rolePing}
-
-🔥 **TODAY'S FLAME FORCE BATTLE BOARD**
-
-`;
-
-    result.rows.forEach(battle => {
-
-      message += `⚔️ ${battle.time} — ${battle.host} vs ${battle.opponent}\n`;
-
-    });
-
-    message += `
-
-Support where you can.
-Bless where it counts.
-Victory is collective.`;
-
-    await channel.send(message);
-
-  } catch (err) {
-
-    console.log("Daily board error:", err.message);
+    console.log("Reminder engine error:", err.message);
 
   }
 
