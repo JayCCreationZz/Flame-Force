@@ -11,13 +11,9 @@
 
 <style>
 
-/* BACKGROUND */
-
 body{
 background:linear-gradient(135deg,#020617,#0f172a);
 }
-
-/* GLASS CARD */
 
 .card{
 background:rgba(30,41,59,.75);
@@ -34,15 +30,11 @@ box-shadow:
 0 0 45px rgba(255,20,0,.25);
 }
 
-/* POSTER */
-
 .poster{
 border-radius:12px;
 max-height:180px;
 object-fit:cover;
 }
-
-/* LOGO GLOW */
 
 .logo{
 animation:pulseGlow 2.5s infinite ease-in-out;
@@ -66,6 +58,13 @@ filter:drop-shadow(0 0 8px rgba(255,80,0,.4));
 
 }
 
+.sectionTitle{
+font-size:1.6rem;
+font-weight:600;
+margin-bottom:1rem;
+color:#fb923c;
+}
+
 </style>
 
 </head>
@@ -80,10 +79,7 @@ filter:drop-shadow(0 0 8px rgba(255,80,0,.4));
 
 <div class="flex items-center gap-4">
 
-<img
-src="/logo.png"
-class="logo w-14 h-14"
-/>
+<img src="/logo.png" class="logo w-14 h-14"/>
 
 <h1 class="text-3xl font-bold">
 Flame Force Battle Calendar
@@ -93,20 +89,14 @@ Flame Force Battle Calendar
 
 <div class="flex gap-3">
 
-<a
-href="/dashboard"
+<a href="/dashboard"
 class="bg-orange-500 hover:bg-orange-600 px-5 py-2 rounded-xl shadow">
-
 Dashboard 🔥
-
 </a>
 
-<a
-href="/logout"
+<a href="/logout"
 class="bg-red-600 hover:bg-red-700 px-5 py-2 rounded-xl shadow">
-
 Logout
-
 </a>
 
 </div>
@@ -114,31 +104,59 @@ Logout
 </div>
 
 
-<!-- BATTLE GRID -->
+<%
+function parseDate(d){
+  const [day,month,year]=d.split("/");
+  return new Date(`${year}-${month}-${day}`);
+}
 
-<% if(!battles.length){ %>
+const today=new Date();
+today.setHours(0,0,0,0);
 
-<div class="text-gray-400 text-lg">
-No battles scheduled yet ⚔
+const tomorrow=new Date(today);
+tomorrow.setDate(today.getDate()+1);
+
+const todayBattles=[];
+const tomorrowBattles=[];
+const upcomingBattles=[];
+
+battles.forEach(b=>{
+
+const battleDate=parseDate(b.date);
+
+if(battleDate.getTime()===today.getTime())
+todayBattles.push(b);
+
+else if(battleDate.getTime()===tomorrow.getTime())
+tomorrowBattles.push(b);
+
+else if(battleDate>tomorrow)
+upcomingBattles.push(b);
+
+});
+%>
+
+
+<!-- TODAY -->
+
+<% if(todayBattles.length){ %>
+
+<div class="mb-12">
+
+<div class="sectionTitle">
+🔥 Today’s Battles
 </div>
-
-<% } else { %>
 
 <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
 
-<% battles.forEach(battle => { %>
+<% todayBattles.forEach(battle=>{ %>
 
 <div class="card p-5">
-
-<!-- POSTER -->
 
 <img
 src="/poster/<%= battle.id %>?t=<%= Date.now() %>"
 class="poster mb-4"
 />
-
-
-<!-- TITLE -->
 
 <h3 class="text-lg font-semibold text-orange-400">
 
@@ -148,29 +166,16 @@ vs
 
 </h3>
 
-
-<!-- DATE -->
-
 <p class="text-gray-300">
-📅 <%= battle.date %>
-</p>
-
-
-<!-- TIME -->
-
-<p class="text-gray-300 mb-3">
 ⏰ <%= battle.time %>
 </p>
-
-
-<!-- LIVE LINK -->
 
 <% if(battle.liveLink){ %>
 
 <a
 href="<%= battle.liveLink %>"
 target="_blank"
-class="inline-block bg-orange-500 hover:bg-orange-600 px-3 py-2 rounded-lg">
+class="inline-block mt-3 bg-orange-500 hover:bg-orange-600 px-3 py-2 rounded-lg">
 
 Watch Battle 🔗
 
@@ -182,6 +187,110 @@ Watch Battle 🔗
 
 <% }) %>
 
+</div>
+
+</div>
+
+<% } %>
+
+
+<!-- TOMORROW -->
+
+<% if(tomorrowBattles.length){ %>
+
+<div class="mb-12">
+
+<div class="sectionTitle">
+⚡ Tomorrow’s Battles
+</div>
+
+<div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+<% tomorrowBattles.forEach(battle=>{ %>
+
+<div class="card p-5">
+
+<img
+src="/poster/<%= battle.id %>?t=<%= Date.now() %>"
+class="poster mb-4"
+/>
+
+<h3 class="text-lg font-semibold text-orange-400">
+
+🔥 <%= battle.hostName || battle.host %>
+vs
+<%= battle.opponent %>
+
+</h3>
+
+<p class="text-gray-300">
+⏰ <%= battle.time %>
+</p>
+
+</div>
+
+<% }) %>
+
+</div>
+
+</div>
+
+<% } %>
+
+
+<!-- UPCOMING -->
+
+<% if(upcomingBattles.length){ %>
+
+<div class="mb-12">
+
+<div class="sectionTitle">
+📅 Upcoming Battles
+</div>
+
+<div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+<% upcomingBattles.forEach(battle=>{ %>
+
+<div class="card p-5">
+
+<img
+src="/poster/<%= battle.id %>?t=<%= Date.now() %>"
+class="poster mb-4"
+/>
+
+<h3 class="text-lg font-semibold text-orange-400">
+
+🔥 <%= battle.hostName || battle.host %>
+vs
+<%= battle.opponent %>
+
+</h3>
+
+<p class="text-gray-300">
+📅 <%= battle.date %>
+⏰ <%= battle.time %>
+</p>
+
+</div>
+
+<% }) %>
+
+</div>
+
+</div>
+
+<% } %>
+
+
+<% if(
+!todayBattles.length &&
+!tomorrowBattles.length &&
+!upcomingBattles.length
+){ %>
+
+<div class="text-gray-400 text-lg">
+No battles scheduled ⚔
 </div>
 
 <% } %>
