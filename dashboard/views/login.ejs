@@ -1,53 +1,119 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<title>Flame Force Login</title>
 
-<link rel="icon" type="image/png" href="/favicon.png">
+<title>Flame Force Login</title>
 
 <script src="https://cdn.tailwindcss.com"></script>
 
 <style>
-.logo-glow {
-    animation: emberGlow 2.5s ease-in-out infinite alternate;
+
+body{
+background:linear-gradient(135deg,#020617,#0f172a);
+color:white;
+height:100vh;
+display:flex;
+align-items:center;
+justify-content:center;
+font-family:sans-serif;
 }
 
-@keyframes emberGlow {
-    from {
-        filter: drop-shadow(0 0 6px #ff7a00)
-                drop-shadow(0 0 12px #ff3c00);
-    }
-    to {
-        filter: drop-shadow(0 0 12px #ffae00)
-                drop-shadow(0 0 24px #ff4500);
-    }
+.logo{
+animation:pulseGlow 2.2s infinite ease-in-out;
 }
+
+@keyframes pulseGlow{
+
+0%{
+filter:drop-shadow(0 0 10px rgba(255,90,0,.4));
+}
+
+50%{
+filter:
+drop-shadow(0 0 28px rgba(255,80,0,.9))
+drop-shadow(0 0 48px rgba(255,40,0,.5));
+}
+
+100%{
+filter:drop-shadow(0 0 10px rgba(255,90,0,.4));
+}
+
+}
+
+.card{
+background:rgba(30,41,59,.75);
+backdrop-filter:blur(14px);
+border-radius:20px;
+border:1px solid rgba(255,90,0,.25);
+padding:45px;
+text-align:center;
+width:380px;
+}
+
 </style>
 
 </head>
 
-<body class="bg-gray-900 flex items-center justify-center min-h-screen text-white">
+<body>
 
-<div class="text-center">
 
-<img src="/logo.png"
-class="w-36 mx-auto mb-6 logo-glow">
+<div class="card">
 
-<h1 class="text-3xl font-bold mb-6">
+<img
+src="/logo.png"
+class="logo w-24 mx-auto mb-6"
+/>
 
-🔥 Flame Force Battle Dashboard
+
+<h1 class="text-2xl font-bold mb-6">
+
+Flame Force Agency
 
 </h1>
 
-<a href="/login"
-class="bg-orange-600 hover:bg-orange-700 px-8 py-3 rounded-lg text-lg font-semibold shadow-lg">
 
-Login with Discord
+<p class="text-gray-300 mb-6">
+
+Login with Discord to manage battles or view the calendar 📅
+
+</p>
+
+
+<div class="flex flex-col gap-4">
+
+
+<a
+href="/login"
+class="bg-orange-500 hover:bg-orange-600 px-6 py-3 rounded-xl shadow text-lg"
+>
+
+Login with Discord 🔥
 
 </a>
 
+
+<a
+href="/calendar"
+class="bg-slate-700 hover:bg-slate-600 px-6 py-3 rounded-xl shadow text-lg"
+>
+
+View Battle Calendar 📅
+
+</a>
+
+
 </div>
+
+
+<p class="text-gray-500 text-sm mt-6">
+
+Members can view the schedule • Admins manage battles
+
+</p>
+
+
+</div>
+
 
 </body>
 </html>

@@ -13,19 +13,29 @@ background:linear-gradient(135deg,#020617,#0f172a);
 color:white;
 }
 
+.logo{
+animation:pulseGlow 2.2s infinite ease-in-out;
+}
+
+@keyframes pulseGlow{
+
+0%{filter:drop-shadow(0 0 10px rgba(255,80,0,.5));}
+
+50%{
+filter:
+drop-shadow(0 0 28px rgba(255,80,0,.95))
+drop-shadow(0 0 50px rgba(255,40,0,.5));
+}
+
+100%{filter:drop-shadow(0 0 10px rgba(255,80,0,.5));}
+
+}
+
 .card{
 background:rgba(30,41,59,.75);
 backdrop-filter:blur(12px);
 border-radius:18px;
 border:1px solid rgba(255,80,0,.25);
-transition:.2s;
-}
-
-.card:hover{
-transform:translateY(-4px);
-box-shadow:
-0 0 20px rgba(255,80,0,.4),
-0 0 35px rgba(255,30,0,.25);
 }
 
 .poster{
@@ -34,42 +44,27 @@ max-height:180px;
 object-fit:cover;
 }
 
-.logo{
-animation:pulseGlow 2.4s infinite ease-in-out;
-}
-
-@keyframes pulseGlow{
-
-0%{
-filter:drop-shadow(0 0 8px rgba(255,80,0,.5));
-}
-
-50%{
-filter:
-drop-shadow(0 0 25px rgba(255,80,0,.95))
-drop-shadow(0 0 45px rgba(255,40,0,.45));
-}
-
-100%{
-filter:drop-shadow(0 0 8px rgba(255,80,0,.5));
-}
-
-}
-
 .liveBadge{
 background:#ef4444;
 padding:4px 10px;
-border-radius:999px;
-font-size:.8rem;
+border-radius:8px;
+font-size:12px;
 margin-left:10px;
 }
 
 .soonBadge{
 background:#f97316;
 padding:4px 10px;
-border-radius:999px;
-font-size:.8rem;
+border-radius:8px;
+font-size:12px;
 margin-left:10px;
+}
+
+.sectionTitle{
+font-size:22px;
+font-weight:bold;
+margin:25px 0 15px 0;
+color:#fb923c;
 }
 
 </style>
@@ -80,64 +75,79 @@ margin-left:10px;
 
 <div class="max-w-7xl mx-auto px-6 py-10">
 
+<!-- HEADER -->
+
 <div class="flex justify-between items-center mb-10">
 
-<div class="flex gap-4 items-center">
+<div class="flex items-center gap-4">
 
-<img src="/logo.png" class="logo w-14"/>
+<img src="/logo.png" class="logo w-14">
 
 <h1 class="text-3xl font-bold">
-Flame Force Calendar
+Flame Force Battle Calendar
 </h1>
 
 </div>
 
+<div class="flex gap-3">
+
 <a href="/dashboard"
-class="bg-orange-500 px-5 py-2 rounded-xl">
-Back to Dashboard
+class="bg-slate-700 hover:bg-slate-600 px-5 py-2 rounded-xl shadow">
+Dashboard 🔥
 </a>
+
+<a href="/logout"
+class="bg-red-600 hover:bg-red-700 px-5 py-2 rounded-xl shadow">
+Logout
+</a>
+
+</div>
 
 </div>
 
 
 <%
+const today = new Date();
+today.setHours(0,0,0,0);
 
-function parseDateTime(date,time){
+const tomorrow = new Date(today);
+tomorrow.setDate(today.getDate()+1);
 
-const [d,m,y]=date.split("/");
-const [h,min]=time.split(":");
+const upcoming = [];
 
-return new Date(y,m-1,d,h,min);
+const todayBattles = [];
+const tomorrowBattles = [];
 
-}
+battles.forEach(b=>{
 
-const now=new Date();
+const battleDate = new Date(b.date.split("/").reverse().join("-"));
 
-function getStatus(date,time){
+battleDate.setHours(0,0,0,0);
 
-const battleDate=parseDateTime(date,time);
+if(battleDate.getTime() === today.getTime())
+todayBattles.push(b);
 
-const diff=(battleDate-now)/60000;
+else if(battleDate.getTime() === tomorrow.getTime())
+tomorrowBattles.push(b);
 
-if(diff<=0 && diff>-120)
-return "live";
+else
+upcoming.push(b);
 
-if(diff>0 && diff<=30)
-return "soon";
+});
 
-return "none";
+function renderBattleCard(b){
 
-}
+const now = new Date();
+const battleDateTime = new Date(`${b.date} ${b.time}`);
 
-%>
+const diffMinutes =
+(battleDateTime-now)/60000;
 
+const isLive =
+Math.abs(diffMinutes)<=5;
 
-<div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-
-<% battles.forEach(b=>{
-
-const status=getStatus(b.date,b.time);
-
+const soon =
+diffMinutes>0 && diffMinutes<=30;
 %>
 
 <div class="card p-5">
@@ -149,51 +159,112 @@ class="poster mb-4"
 
 <h3 class="text-lg font-semibold text-orange-400">
 
-🔥 <%= b.hostName || b.host %>
-vs
-<%= b.opponent %>
+🔥 <%= b.hostName || b.host %> vs <%= b.opponent %>
 
-<% if(status==="live"){ %>
-
-<span class="liveBadge">
-LIVE NOW
-</span>
-
+<% if(isLive){ %>
+<span class="liveBadge">LIVE NOW</span>
 <% } %>
 
-<% if(status==="soon"){ %>
-
-<span class="soonBadge">
-STARTING SOON
-</span>
-
+<% if(soon){ %>
+<span class="soonBadge">STARTING SOON</span>
 <% } %>
 
 </h3>
 
 <p class="text-gray-300">
 📅 <%= b.date %>
+</p>
+
+<p class="text-gray-300 mb-2">
 ⏰ <%= b.time %>
 </p>
 
-<% if(b.liveLink){ %>
+<div class="text-sm text-gray-400 space-y-1 mb-3">
+
+<p>
+<%= b.managergifting ? "🎁 Manager Gifting Allowed" : "🚫 No Manager Gifting" %>
+</p>
+
+<p>
+<%= b.adultonly ? "🔞 18+" : "🟢 All Ages" %>
+</p>
+
+<p>
+<%= b.powerups ? "⚡ Power Ups Enabled" : "🚫 No Power Ups" %>
+</p>
+
+<p>
+<%= b.nohammers ? "🔨 No Hammers" : "🟢 Hammers Allowed" %>
+</p>
+
+</div>
+
+<% if(b.livelink){ %>
 
 <a
-href="<%= b.liveLink %>"
+href="<%= b.livelink %>"
 target="_blank"
-class="inline-block mt-3 bg-orange-500 px-3 py-2 rounded-lg">
-
-Watch Battle 🔗
-
+class="inline-block bg-orange-500 hover:bg-orange-600 px-3 py-2 rounded-lg">
+Join Battle 🔗
 </a>
 
 <% } %>
 
 </div>
 
+<% } %>
+
+
+<!-- TODAY -->
+
+<% if(todayBattles.length){ %>
+
+<div class="sectionTitle">🔥 Today</div>
+
+<div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+<% todayBattles.forEach(b=>{ %>
+<%- renderBattleCard(b) %>
 <% }) %>
 
 </div>
+
+<% } %>
+
+
+<!-- TOMORROW -->
+
+<% if(tomorrowBattles.length){ %>
+
+<div class="sectionTitle">⚔️ Tomorrow</div>
+
+<div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+<% tomorrowBattles.forEach(b=>{ %>
+<%- renderBattleCard(b) %>
+<% }) %>
+
+</div>
+
+<% } %>
+
+
+<!-- UPCOMING -->
+
+<% if(upcoming.length){ %>
+
+<div class="sectionTitle">📅 Upcoming Battles</div>
+
+<div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+<% upcoming.forEach(b=>{ %>
+<%- renderBattleCard(b) %>
+<% }) %>
+
+</div>
+
+<% } %>
+
 
 </div>
 
