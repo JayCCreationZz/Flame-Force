@@ -1,42 +1,55 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Flame Force Dashboard</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+<title>Flame Force Dashboard</title>
+<script src="https://cdn.tailwindcss.com"></script>
 
-  <style>
-    body{
-      background:linear-gradient(135deg,#020617,#0f172a);
-      color:white;
-    }
+<style>
 
-    .logo{
-      animation:pulseGlow 2.2s infinite ease-in-out;
-    }
+body{
+background:linear-gradient(135deg,#020617,#0f172a);
+color:white;
+}
 
-    @keyframes pulseGlow{
-      0%{filter:drop-shadow(0 0 10px rgba(255,80,0,.5));}
-      50%{
-        filter:
-        drop-shadow(0 0 28px rgba(255,80,0,.95))
-        drop-shadow(0 0 50px rgba(255,40,0,.5));
-      }
-      100%{filter:drop-shadow(0 0 10px rgba(255,80,0,.5));}
-    }
+/* animated logo glow */
 
-    .card{
-      background:rgba(30,41,59,.75);
-      backdrop-filter:blur(12px);
-      border-radius:18px;
-      border:1px solid rgba(255,80,0,.25);
-    }
+.logo{
+animation:flameGlow 2.2s infinite ease-in-out;
+}
 
-    .poster{
-      border-radius:12px;
-      max-height:180px;
-      object-fit:cover;
-    }
-  </style>
+@keyframes flameGlow{
+0%{filter:drop-shadow(0 0 6px rgba(255,80,0,.4));}
+50%{
+filter:
+drop-shadow(0 0 28px rgba(255,80,0,.95))
+drop-shadow(0 0 48px rgba(255,40,0,.5));
+}
+100%{filter:drop-shadow(0 0 6px rgba(255,80,0,.4));}
+}
+
+.card{
+background:rgba(30,41,59,.7);
+backdrop-filter:blur(10px);
+border-radius:18px;
+border:1px solid rgba(255,80,0,.25);
+}
+
+.poster{
+border-radius:14px;
+max-height:200px;
+object-fit:cover;
+}
+
+.rule{
+font-size:12px;
+padding:4px 10px;
+border-radius:8px;
+background:#1e293b;
+display:inline-block;
+margin:2px;
+}
+
+</style>
 </head>
 
 <body>
@@ -44,35 +57,40 @@
 <div class="max-w-7xl mx-auto px-6 py-10">
 
 <!-- NAVBAR -->
+
 <div class="flex justify-between items-center mb-10">
 
-  <div class="flex items-center gap-4">
-    <img src="/logo.png" class="logo w-14">
-    <h1 class="text-3xl font-bold">Flame Force Dashboard</h1>
-  </div>
+<div class="flex items-center gap-4">
 
-  <div class="flex gap-3">
+<img src="/logo.png" class="logo w-14">
 
-    <% if(roleLevel === "owner" || roleLevel === "admin"){ %>
-      <a href="/dashboard" class="bg-slate-700 px-5 py-2 rounded-xl">Dashboard 🔥</a>
-    <% } %>
+<h1 class="text-3xl font-bold">Flame Force Dashboard 🔥</h1>
 
-    <a href="/calendar" class="bg-orange-500 px-5 py-2 rounded-xl">Calendar 📅</a>
+</div>
 
-    <a href="/logout" class="bg-red-600 px-5 py-2 rounded-xl">Logout</a>
+<div class="flex gap-3">
 
-  </div>
+<% if(roleLevel === "owner" || roleLevel === "admin"){ %>
+<a href="/dashboard" class="bg-slate-700 px-5 py-2 rounded-xl">Dashboard</a>
+<% } %>
+
+<a href="/calendar" class="bg-orange-500 px-5 py-2 rounded-xl">Calendar 📅</a>
+
+<a href="/logout" class="bg-red-600 px-5 py-2 rounded-xl">Logout</a>
+
+</div>
 </div>
 
 
-<!-- CREATE BATTLE -->
+<!-- CREATE BATTLE PANEL -->
+
 <% if(roleLevel === "owner" || roleLevel === "admin"){ %>
 
 <div class="card p-6 mb-10">
 
-<h2 class="text-xl font-semibold mb-4">Create Battle</h2>
+<h2 class="text-xl font-semibold mb-4">Create Battle ⚔️</h2>
 
-<form action="/create" method="POST" enctype="multipart/form-data" class="grid grid-cols-2 gap-4">
+<form action="/create" method="POST" enctype="multipart/form-data" class="grid md:grid-cols-2 gap-4">
 
 <select name="host" required class="text-black p-2 rounded">
 
@@ -84,13 +102,72 @@
 
 </select>
 
-<input type="text" name="opponent" placeholder="Opponent" required class="text-black p-2 rounded">
+<input type="text" name="opponent" placeholder="Opponent username" required class="text-black p-2 rounded">
+
 <input type="text" name="date" placeholder="DD/MM/YYYY" required class="text-black p-2 rounded">
+
 <input type="text" name="time" placeholder="HH:MM" required class="text-black p-2 rounded">
 
 <input type="file" name="poster" class="col-span-2">
 
-<button class="bg-orange-500 px-5 py-2 rounded col-span-2">Create Battle</button>
+<input type="text" name="liveLink" placeholder="TikTok live link (optional)" class="text-black p-2 rounded col-span-2">
+
+
+<!-- RULE OPTIONS -->
+
+<div>
+
+<label>Manager Gifting</label>
+
+<select name="managerGifting" class="text-black p-2 rounded w-full">
+
+<option value="true">Allowed</option>
+<option value="false">Disabled</option>
+
+</select>
+
+</div>
+
+<div>
+
+<label>18+</label>
+
+<select name="adultOnly" class="text-black p-2 rounded w-full">
+
+<option value="false">Off</option>
+<option value="true">On</option>
+
+</select>
+
+</div>
+
+<div>
+
+<label>Power Ups</label>
+
+<select name="powerUps" class="text-black p-2 rounded w-full">
+
+<option value="true">Allowed</option>
+<option value="false">Disabled</option>
+
+</select>
+
+</div>
+
+<div>
+
+<label>No Hammers</label>
+
+<select name="noHammers" class="text-black p-2 rounded w-full">
+
+<option value="true">Enabled</option>
+<option value="false">Disabled</option>
+
+</select>
+
+</div>
+
+<button class="bg-orange-500 px-5 py-2 rounded col-span-2 mt-3">Create Battle 🚀</button>
 
 </form>
 
@@ -99,7 +176,8 @@
 <% } %>
 
 
-<!-- BATTLES -->
+<!-- BATTLE GRID -->
+
 <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
 
 <% battles.forEach(b=>{ %>
@@ -108,18 +186,70 @@
 
 <img src="/poster/<%= b.id %>?t=<%= Date.now() %>" class="poster mb-4">
 
+
 <h3 class="text-lg text-orange-400 font-semibold">
+
 🔥 <%= b.hostName || b.host %> vs <%= b.opponent %>
+
 </h3>
 
+
 <p>📅 <%= b.date %></p>
-<p class="mb-3">⏰ <%= b.time %></p>
+
+<p>⏰ <%= b.time %></p>
+
+
+<!-- RULE BADGES -->
+
+<div class="mt-2">
+
+<span class="rule"><%= b.managergifting ? "🎁 Gifting Allowed" : "🚫 No Manager Gifting" %></span>
+
+<span class="rule"><%= b.adultonly ? "🔞 18+" : "All Ages" %></span>
+
+<span class="rule"><%= b.powerups ? "⚡ Power Ups" : "No Power Ups" %></span>
+
+<span class="rule"><%= b.nohammers ? "🔨 No Hammers" : "Hammers Allowed" %></span>
+
+</div>
+
+
+<!-- LIVE LINK -->
+
+<% if(b.livelink){ %>
+
+<a href="<%= b.livelink %>" target="_blank"
+class="inline-block mt-3 bg-purple-600 px-3 py-1 rounded">
+
+Watch Live 🎥
+
+</a>
+
+<% } %>
+
+
+<!-- ADMIN CONTROLS -->
 
 <% if(roleLevel === "owner" || roleLevel === "admin"){ %>
 
-<form action="/delete/<%= b.id %>" method="POST">
-<button class="bg-red-600 px-3 py-1 rounded">Delete</button>
+<div class="flex gap-2 mt-4">
+
+<form action="/replace-poster/<%= b.id %>" method="POST" enctype="multipart/form-data">
+
+<input type="file" name="poster" required>
+
+<button class="bg-yellow-500 px-2 py-1 rounded mt-1">Replace Poster</button>
+
 </form>
+
+
+<form action="/delete/<%= b.id %>" method="POST">
+
+<button class="bg-red-600 px-3 py-1 rounded">Delete</button>
+
+</form>
+
+</div>
 
 <% } %>
 
@@ -130,5 +260,6 @@
 </div>
 
 </div>
+
 </body>
 </html>
