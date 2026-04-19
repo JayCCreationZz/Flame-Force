@@ -8,25 +8,26 @@ const multer = require("multer");
 const sharp = require("sharp");
 const fs = require("fs");
 const axios = require("axios");
-const FormData = require("form-data");
 
 const db = require("../database");
+
+/*
+IMPORTANT:
+Import instant-post function from bot
+*/
+const { postBattleNow } = require("../index");
 
 const app = express();
 
 /*
-==============================
 ROLE IDS
-==============================
 */
 
 const OWNER_ROLE = "1439255505053683804";
 const ADMIN_ROLE = "1439256200658157588";
 
 /*
-==============================
 UPLOAD CONFIG
-==============================
 */
 
 const upload = multer({ dest: "tmp/" });
@@ -48,9 +49,7 @@ return buffer;
 }
 
 /*
-==============================
 EXPRESS CONFIG
-==============================
 */
 
 app.set("view engine","ejs");
@@ -87,9 +86,7 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 /*
-==============================
 DISCORD LOGIN
-==============================
 */
 
 passport.use(new DiscordStrategy({
@@ -108,9 +105,7 @@ passport.serializeUser((u,d)=>d(null,u));
 passport.deserializeUser((o,d)=>d(null,o));
 
 /*
-==============================
 ROLE LOOKUP
-==============================
 */
 
 async function getUserRoleLevel(req){
@@ -132,11 +127,8 @@ Authorization:`Bot ${process.env.TOKEN}`
 
 const roles=response.data.roles || [];
 
-if(roles.includes(OWNER_ROLE))
-return "owner";
-
-if(roles.includes(ADMIN_ROLE))
-return "admin";
+if(roles.includes(OWNER_ROLE)) return "owner";
+if(roles.includes(ADMIN_ROLE)) return "admin";
 
 return "member";
 
@@ -151,9 +143,7 @@ return "member";
 }
 
 /*
-==============================
 AUTH CHECK
-==============================
 */
 
 async function checkAuth(req,res,next){
@@ -169,14 +159,10 @@ next();
 }
 
 /*
-==============================
 POSTER ENDPOINT
-==============================
 */
 
 app.get("/poster/:id", async(req,res)=>{
-
-try{
 
 const result =
 await db.query(
@@ -184,28 +170,17 @@ await db.query(
 [req.params.id]
 );
 
-if(!result.rows.length ||
-!result.rows[0].posterdata)
+if(!result.rows.length)
 return res.sendStatus(404);
 
 res.set("Content-Type","image/jpeg");
 
 res.send(result.rows[0].posterdata);
 
-}catch(err){
-
-console.log("Poster fetch error:",err.message);
-
-res.sendStatus(500);
-
-}
-
 });
 
 /*
-==============================
 LOGIN ROUTES
-==============================
 */
 
 app.get("/",(req,res)=>res.render("login"));
@@ -229,14 +204,10 @@ app.get("/logout",
 );
 
 /*
-==============================
-FETCH DISCORD MEMBERS
-==============================
+FETCH MEMBERS
 */
 
 async function getAgencyMembers(){
-
-try{
 
 const response =
 await axios.get(
@@ -262,20 +233,10 @@ member.user.username
 
 }));
 
-}catch(err){
-
-console.log("Member fetch error:",err.message);
-
-return [];
-
-}
-
 }
 
 /*
-==============================
 DASHBOARD
-==============================
 */
 
 app.get("/dashboard",
@@ -292,17 +253,16 @@ await db.query(
 const members =
 await getAgencyMembers();
 
-const memberMap = {};
+const memberMap={};
 
 members.forEach(m=>{
 memberMap[m.id]=m.name;
 });
 
-const battles =
-battlesRaw.rows.map(b=>{
+const battles=battlesRaw.rows.map(b=>{
 
-b.hostName =
-memberMap[b.host] || b.host;
+b.hostName=
+memberMap[b.host]||b.host;
 
 return b;
 
@@ -319,9 +279,7 @@ roleLevel:req.roleLevel
 });
 
 /*
-==============================
 CREATE BATTLE
-==============================
 */
 
 app.post("/create",
@@ -337,6 +295,11 @@ return res.send("Permission denied");
 const posterBuffer =
 await processPoster(req.file);
 
+/*
+INSERT + RETURN ROW
+*/
+
+const inserted =
 await db.query(
 
 `INSERT INTO battles
@@ -344,7 +307,8 @@ await db.query(
 liveLink,managerGifting,adultOnly,
 powerUps,noHammers)
 
-VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+RETURNING *`,
 
 [
 req.body.host,
@@ -361,42 +325,18 @@ req.body.noHammers==="true"
 
 );
 
-res.redirect("/dashboard");
-
-});
-
 /*
-==============================
-REPLACE POSTER
-==============================
+INSTANT DISCORD POST
 */
 
-app.post("/replace-poster/:id",
-
-checkAuth,
-upload.single("poster"),
-
-async(req,res)=>{
-
-if(!["owner","admin"].includes(req.roleLevel))
-return res.redirect("/dashboard");
-
-const posterBuffer =
-await processPoster(req.file);
-
-await db.query(
-"UPDATE battles SET posterData=$1 WHERE id=$2",
-[posterBuffer,req.params.id]
-);
+await postBattleNow(inserted.rows[0]);
 
 res.redirect("/dashboard");
 
 });
 
 /*
-==============================
-DELETE BATTLE
-==============================
+DELETE
 */
 
 app.post("/delete/:id",
@@ -418,9 +358,7 @@ res.redirect("/dashboard");
 });
 
 /*
-==============================
-CALENDAR (MEMBERS ALLOWED)
-==============================
+CALENDAR
 */
 
 app.get("/calendar",
@@ -429,54 +367,23 @@ checkAuth,
 
 async(req,res)=>{
 
-try{
-
 const battlesRaw =
 await db.query(
 "SELECT * FROM battles ORDER BY date,time"
 );
 
-const members =
-await getAgencyMembers();
-
-const memberMap = {};
-
-members.forEach(m=>{
-memberMap[m.id]=m.name;
-});
-
-const battles =
-battlesRaw.rows.map(b=>{
-
-b.hostName =
-memberMap[b.host] || b.host;
-
-return b;
-
-});
-
 res.render("calendar",{
 
-battles,
+battles:battlesRaw.rows,
 roleLevel:req.roleLevel,
 userId:req.user.id
 
 });
 
-}catch(err){
-
-console.log("Calendar load error:",err.message);
-
-res.send("Calendar failed to load");
-
-}
-
 });
 
 /*
-==============================
 START SERVER
-==============================
 */
 
 const PORT =
