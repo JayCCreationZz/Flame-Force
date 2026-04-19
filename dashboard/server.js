@@ -15,19 +15,22 @@ const db = require("../database");
 const app = express();
 
 /*
+==============================
 ROLE IDS
+==============================
 */
+
 const OWNER_ROLE = "1439255505053683804";
 const ADMIN_ROLE = "1439256200658157588";
 
 /*
+==============================
 UPLOAD CONFIG
+==============================
 */
+
 const upload = multer({ dest: "tmp/" });
 
-/*
-POSTER PROCESSOR
-*/
 async function processPoster(file) {
 
 if(!file) return null;
@@ -45,8 +48,11 @@ return buffer;
 }
 
 /*
+==============================
 EXPRESS CONFIG
+==============================
 */
+
 app.set("view engine","ejs");
 
 app.set(
@@ -71,7 +77,7 @@ resave:false,
 saveUninitialized:false,
 
 cookie:{
-secure:true,
+secure:process.env.NODE_ENV==="production",
 sameSite:"none"
 }
 
@@ -81,8 +87,11 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 /*
+==============================
 DISCORD LOGIN
+==============================
 */
+
 passport.use(new DiscordStrategy({
 
 clientID:process.env.CLIENT_ID,
@@ -99,8 +108,11 @@ passport.serializeUser((u,d)=>d(null,u));
 passport.deserializeUser((o,d)=>d(null,o));
 
 /*
+==============================
 ROLE LOOKUP
+==============================
 */
+
 async function getUserRoleLevel(req){
 
 try{
@@ -139,8 +151,11 @@ return "member";
 }
 
 /*
+==============================
 AUTH CHECK
+==============================
 */
+
 async function checkAuth(req,res,next){
 
 if(!req.isAuthenticated())
@@ -154,8 +169,11 @@ next();
 }
 
 /*
+==============================
 POSTER ENDPOINT
+==============================
 */
+
 app.get("/poster/:id", async(req,res)=>{
 
 try{
@@ -185,8 +203,11 @@ res.sendStatus(500);
 });
 
 /*
+==============================
 LOGIN ROUTES
+==============================
 */
+
 app.get("/",(req,res)=>res.render("login"));
 
 app.get("/login",
@@ -208,8 +229,11 @@ app.get("/logout",
 );
 
 /*
+==============================
 FETCH DISCORD MEMBERS
+==============================
 */
+
 async function getAgencyMembers(){
 
 try{
@@ -249,33 +273,11 @@ return [];
 }
 
 /*
-DEBUG ROLE ROUTE
-*/
-app.get("/debug-roles", async(req,res)=>{
-
-if(!req.user)
-return res.send("Not logged in");
-
-const response =
-await axios.get(
-
-`https://discord.com/api/v10/guilds/${process.env.GUILD_ID}/members/${req.user.id}`,
-
-{
-headers:{
-Authorization:`Bot ${process.env.TOKEN}`
-}
-}
-
-);
-
-res.json(response.data.roles);
-
-});
-
-/*
+==============================
 DASHBOARD
+==============================
 */
+
 app.get("/dashboard",
 
 checkAuth,
@@ -317,8 +319,11 @@ roleLevel:req.roleLevel
 });
 
 /*
+==============================
 CREATE BATTLE
+==============================
 */
+
 app.post("/create",
 
 checkAuth,
@@ -356,78 +361,16 @@ req.body.noHammers==="true"
 
 );
 
-/*
-DISCORD ANNOUNCEMENT
-*/
-try{
-
-const form = new FormData();
-
-form.append("content",
-
-`🔥 **Battle Scheduled**
-
-⚔ <@${req.body.host}> vs ${req.body.opponent}
-
-📅 ${req.body.date}
-⏰ ${req.body.time}
-
-🎁 Manager Gifting:
-${req.body.managerGifting==="true"?"Allowed":"Disabled"}
-
-🔞 18+:
-${req.body.adultOnly==="true"?"Enabled":"Disabled"}
-
-⚡ Power Ups:
-${req.body.powerUps==="true"?"Allowed":"Disabled"}
-
-🔨 No Hammers:
-${req.body.noHammers==="true"?"Enabled":"Disabled"}
-
-${req.body.liveLink || ""}`
-);
-
-if(posterBuffer){
-
-form.append(
-"files[0]",
-posterBuffer,
-{
-filename:"battle.jpg",
-contentType:"image/jpeg"
-}
-);
-
-}
-
-await axios.post(
-
-`https://discord.com/api/v10/channels/${process.env.BATTLE_CHANNEL_ID}/messages`,
-
-form,
-
-{
-headers:{
-Authorization:`Bot ${process.env.TOKEN}`,
-...form.getHeaders()
-}
-}
-
-);
-
-}catch(err){
-
-console.log("Discord post failed:",err.message);
-
-}
-
 res.redirect("/dashboard");
 
 });
 
 /*
+==============================
 REPLACE POSTER
+==============================
 */
+
 app.post("/replace-poster/:id",
 
 checkAuth,
@@ -451,8 +394,11 @@ res.redirect("/dashboard");
 });
 
 /*
+==============================
 DELETE BATTLE
+==============================
 */
+
 app.post("/delete/:id",
 
 checkAuth,
@@ -472,9 +418,14 @@ res.redirect("/dashboard");
 });
 
 /*
-CALENDAR (FIXED VERSION)
+==============================
+CALENDAR (MEMBERS ALLOWED)
+==============================
 */
+
 app.get("/calendar",
+
+checkAuth,
 
 async(req,res)=>{
 
@@ -507,7 +458,8 @@ return b;
 res.render("calendar",{
 
 battles,
-userId:req.user?.id || null
+roleLevel:req.roleLevel,
+userId:req.user.id
 
 });
 
@@ -522,8 +474,11 @@ res.send("Calendar failed to load");
 });
 
 /*
+==============================
 START SERVER
+==============================
 */
+
 const PORT =
 process.env.PORT || 8080;
 
