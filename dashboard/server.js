@@ -146,7 +146,7 @@ async function checkAuth(req,res,next){
 if(!req.isAuthenticated())
 return res.redirect("/");
 
-req.roleLevel=
+req.roleLevel =
 await getUserRoleLevel(req);
 
 next();
@@ -160,7 +160,7 @@ app.get("/poster/:id", async(req,res)=>{
 
 try{
 
-const result=
+const result =
 await db.query(
 "SELECT posterData FROM battles WHERE id=$1",
 [req.params.id]
@@ -189,13 +189,11 @@ LOGIN ROUTES
 */
 app.get("/",(req,res)=>res.render("login"));
 
-app.get(
-"/login",
+app.get("/login",
 passport.authenticate("discord")
 );
 
-app.get(
-"/auth/callback",
+app.get("/auth/callback",
 
 passport.authenticate(
 "discord",
@@ -205,8 +203,7 @@ passport.authenticate(
 (req,res)=>res.redirect("/dashboard")
 );
 
-app.get(
-"/logout",
+app.get("/logout",
 (req,res)=>req.logout(()=>res.redirect("/"))
 );
 
@@ -217,7 +214,7 @@ async function getAgencyMembers(){
 
 try{
 
-const response=
+const response =
 await axios.get(
 
 `https://discord.com/api/v10/guilds/${process.env.GUILD_ID}/members?limit=1000`,
@@ -259,7 +256,7 @@ app.get("/debug-roles", async(req,res)=>{
 if(!req.user)
 return res.send("Not logged in");
 
-const response=
+const response =
 await axios.get(
 
 `https://discord.com/api/v10/guilds/${process.env.GUILD_ID}/members/${req.user.id}`,
@@ -279,31 +276,30 @@ res.json(response.data.roles);
 /*
 DASHBOARD
 */
-app.get(
-"/dashboard",
+app.get("/dashboard",
 
 checkAuth,
 
 async(req,res)=>{
 
-const battlesRaw=
+const battlesRaw =
 await db.query(
 "SELECT * FROM battles ORDER BY date,time"
 );
 
-const members=
+const members =
 await getAgencyMembers();
 
-const memberMap={};
+const memberMap = {};
 
 members.forEach(m=>{
 memberMap[m.id]=m.name;
 });
 
-const battles=
+const battles =
 battlesRaw.rows.map(b=>{
 
-b.hostName=
+b.hostName =
 memberMap[b.host] || b.host;
 
 return b;
@@ -323,11 +319,9 @@ roleLevel:req.roleLevel
 /*
 CREATE BATTLE
 */
-app.post(
-"/create",
+app.post("/create",
 
 checkAuth,
-
 upload.single("poster"),
 
 async(req,res)=>{
@@ -335,7 +329,7 @@ async(req,res)=>{
 if(!["owner","admin"].includes(req.roleLevel))
 return res.send("Permission denied");
 
-const posterBuffer=
+const posterBuffer =
 await processPoster(req.file);
 
 await db.query(
@@ -367,11 +361,9 @@ DISCORD ANNOUNCEMENT
 */
 try{
 
-const form=new FormData();
+const form = new FormData();
 
-form.append(
-
-"content",
+form.append("content",
 
 `🔥 **Battle Scheduled**
 
@@ -436,11 +428,9 @@ res.redirect("/dashboard");
 /*
 REPLACE POSTER
 */
-app.post(
-"/replace-poster/:id",
+app.post("/replace-poster/:id",
 
 checkAuth,
-
 upload.single("poster"),
 
 async(req,res)=>{
@@ -448,13 +438,11 @@ async(req,res)=>{
 if(!["owner","admin"].includes(req.roleLevel))
 return res.redirect("/dashboard");
 
-const posterBuffer=
+const posterBuffer =
 await processPoster(req.file);
 
 await db.query(
-
 "UPDATE battles SET posterData=$1 WHERE id=$2",
-
 [posterBuffer,req.params.id]
 );
 
@@ -465,8 +453,7 @@ res.redirect("/dashboard");
 /*
 DELETE BATTLE
 */
-app.post(
-"/delete/:id",
+app.post("/delete/:id",
 
 checkAuth,
 
@@ -485,31 +472,59 @@ res.redirect("/dashboard");
 });
 
 /*
-CALENDAR
+CALENDAR (FIXED VERSION)
 */
-app.get(
-"/calendar",
+app.get("/calendar",
 
 async(req,res)=>{
 
-const battles=
+try{
+
+const battlesRaw =
 await db.query(
 "SELECT * FROM battles ORDER BY date,time"
 );
 
-res.render("calendar",{
+const members =
+await getAgencyMembers();
 
-battles:battles.rows,
-userId:req.user?.id||null
+const memberMap = {};
+
+members.forEach(m=>{
+memberMap[m.id]=m.name;
+});
+
+const battles =
+battlesRaw.rows.map(b=>{
+
+b.hostName =
+memberMap[b.host] || b.host;
+
+return b;
 
 });
+
+res.render("calendar",{
+
+battles,
+userId:req.user?.id || null
+
+});
+
+}catch(err){
+
+console.log("Calendar load error:",err.message);
+
+res.send("Calendar failed to load");
+
+}
 
 });
 
 /*
 START SERVER
 */
-const PORT=
+const PORT =
 process.env.PORT || 8080;
 
 app.listen(PORT,()=>{
