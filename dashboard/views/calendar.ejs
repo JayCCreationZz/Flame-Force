@@ -1,272 +1,92 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <title>Flame Force Calendar</title>
+  <script src="https://cdn.tailwindcss.com"></script>
 
-<title>Flame Force Calendar</title>
+  <style>
+    body{
+      background:linear-gradient(135deg,#020617,#0f172a);
+      color:white;
+    }
 
-<script src="https://cdn.tailwindcss.com"></script>
+    .logo{
+      animation:pulseGlow 2.2s infinite ease-in-out;
+    }
 
-<style>
+    @keyframes pulseGlow{
+      0%{filter:drop-shadow(0 0 10px rgba(255,80,0,.5));}
+      50%{
+        filter:
+        drop-shadow(0 0 28px rgba(255,80,0,.95))
+        drop-shadow(0 0 50px rgba(255,40,0,.5));
+      }
+      100%{filter:drop-shadow(0 0 10px rgba(255,80,0,.5));}
+    }
 
-body{
-background:linear-gradient(135deg,#020617,#0f172a);
-color:white;
-}
+    .card{
+      background:rgba(30,41,59,.75);
+      backdrop-filter:blur(12px);
+      border-radius:18px;
+      border:1px solid rgba(255,80,0,.25);
+    }
 
-.logo{
-animation:pulseGlow 2.2s infinite ease-in-out;
-}
-
-@keyframes pulseGlow{
-
-0%{filter:drop-shadow(0 0 10px rgba(255,80,0,.5));}
-
-50%{
-filter:
-drop-shadow(0 0 28px rgba(255,80,0,.95))
-drop-shadow(0 0 50px rgba(255,40,0,.5));
-}
-
-100%{filter:drop-shadow(0 0 10px rgba(255,80,0,.5));}
-
-}
-
-.card{
-background:rgba(30,41,59,.75);
-backdrop-filter:blur(12px);
-border-radius:18px;
-border:1px solid rgba(255,80,0,.25);
-}
-
-.poster{
-border-radius:12px;
-max-height:180px;
-object-fit:cover;
-}
-
-.liveBadge{
-background:#ef4444;
-padding:4px 10px;
-border-radius:8px;
-font-size:12px;
-margin-left:10px;
-}
-
-.soonBadge{
-background:#f97316;
-padding:4px 10px;
-border-radius:8px;
-font-size:12px;
-margin-left:10px;
-}
-
-.sectionTitle{
-font-size:22px;
-font-weight:bold;
-margin:25px 0 15px 0;
-color:#fb923c;
-}
-
-</style>
-
+    .poster{
+      border-radius:12px;
+      max-height:180px;
+      object-fit:cover;
+    }
+  </style>
 </head>
 
 <body>
 
 <div class="max-w-7xl mx-auto px-6 py-10">
 
-<!-- HEADER -->
-
+<!-- NAVBAR -->
 <div class="flex justify-between items-center mb-10">
 
-<div class="flex items-center gap-4">
+  <div class="flex items-center gap-4">
+    <img src="/logo.png" class="logo w-14">
+    <h1 class="text-3xl font-bold">Battle Calendar</h1>
+  </div>
 
-<img src="/logo.png" class="logo w-14">
+  <div class="flex gap-3">
 
-<h1 class="text-3xl font-bold">
-Flame Force Battle Calendar
-</h1>
+    <% if(roleLevel === "owner" || roleLevel === "admin"){ %>
+      <a href="/dashboard" class="bg-slate-700 px-5 py-2 rounded-xl">Dashboard 🔥</a>
+    <% } %>
 
-</div>
+    <a href="/calendar" class="bg-orange-500 px-5 py-2 rounded-xl">Calendar 📅</a>
 
-<div class="flex gap-3">
+    <a href="/logout" class="bg-red-600 px-5 py-2 rounded-xl">Logout</a>
 
-<a href="/dashboard"
-class="bg-slate-700 hover:bg-slate-600 px-5 py-2 rounded-xl shadow">
-Dashboard 🔥
-</a>
-
-<a href="/logout"
-class="bg-red-600 hover:bg-red-700 px-5 py-2 rounded-xl shadow">
-Logout
-</a>
-
-</div>
-
+  </div>
 </div>
 
 
-<%
-const today = new Date();
-today.setHours(0,0,0,0);
+<!-- BATTLES -->
+<div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
 
-const tomorrow = new Date(today);
-tomorrow.setDate(today.getDate()+1);
-
-const upcoming = [];
-
-const todayBattles = [];
-const tomorrowBattles = [];
-
-battles.forEach(b=>{
-
-const battleDate = new Date(b.date.split("/").reverse().join("-"));
-
-battleDate.setHours(0,0,0,0);
-
-if(battleDate.getTime() === today.getTime())
-todayBattles.push(b);
-
-else if(battleDate.getTime() === tomorrow.getTime())
-tomorrowBattles.push(b);
-
-else
-upcoming.push(b);
-
-});
-
-function renderBattleCard(b){
-
-const now = new Date();
-const battleDateTime = new Date(`${b.date} ${b.time}`);
-
-const diffMinutes =
-(battleDateTime-now)/60000;
-
-const isLive =
-Math.abs(diffMinutes)<=5;
-
-const soon =
-diffMinutes>0 && diffMinutes<=30;
-%>
+<% battles.forEach(b=>{ %>
 
 <div class="card p-5">
 
-<img
-src="/poster/<%= b.id %>?t=<%= Date.now() %>"
-class="poster mb-4"
-/>
+<img src="/poster/<%= b.id %>?t=<%= Date.now() %>" class="poster mb-4">
 
-<h3 class="text-lg font-semibold text-orange-400">
-
+<h3 class="text-lg text-orange-400 font-semibold">
 🔥 <%= b.hostName || b.host %> vs <%= b.opponent %>
-
-<% if(isLive){ %>
-<span class="liveBadge">LIVE NOW</span>
-<% } %>
-
-<% if(soon){ %>
-<span class="soonBadge">STARTING SOON</span>
-<% } %>
-
 </h3>
 
-<p class="text-gray-300">
-📅 <%= b.date %>
-</p>
-
-<p class="text-gray-300 mb-2">
-⏰ <%= b.time %>
-</p>
-
-<div class="text-sm text-gray-400 space-y-1 mb-3">
-
-<p>
-<%= b.managergifting ? "🎁 Manager Gifting Allowed" : "🚫 No Manager Gifting" %>
-</p>
-
-<p>
-<%= b.adultonly ? "🔞 18+" : "🟢 All Ages" %>
-</p>
-
-<p>
-<%= b.powerups ? "⚡ Power Ups Enabled" : "🚫 No Power Ups" %>
-</p>
-
-<p>
-<%= b.nohammers ? "🔨 No Hammers" : "🟢 Hammers Allowed" %>
-</p>
+<p>📅 <%= b.date %></p>
+<p class="mb-2">⏰ <%= b.time %></p>
 
 </div>
 
-<% if(b.livelink){ %>
-
-<a
-href="<%= b.livelink %>"
-target="_blank"
-class="inline-block bg-orange-500 hover:bg-orange-600 px-3 py-2 rounded-lg">
-Join Battle 🔗
-</a>
-
-<% } %>
-
-</div>
-
-<% } %>
-
-
-<!-- TODAY -->
-
-<% if(todayBattles.length){ %>
-
-<div class="sectionTitle">🔥 Today</div>
-
-<div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-
-<% todayBattles.forEach(b=>{ %>
-<%- renderBattleCard(b) %>
 <% }) %>
 
 </div>
 
-<% } %>
-
-
-<!-- TOMORROW -->
-
-<% if(tomorrowBattles.length){ %>
-
-<div class="sectionTitle">⚔️ Tomorrow</div>
-
-<div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-
-<% tomorrowBattles.forEach(b=>{ %>
-<%- renderBattleCard(b) %>
-<% }) %>
-
 </div>
-
-<% } %>
-
-
-<!-- UPCOMING -->
-
-<% if(upcoming.length){ %>
-
-<div class="sectionTitle">📅 Upcoming Battles</div>
-
-<div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-
-<% upcoming.forEach(b=>{ %>
-<%- renderBattleCard(b) %>
-<% }) %>
-
-</div>
-
-<% } %>
-
-
-</div>
-
 </body>
 </html>

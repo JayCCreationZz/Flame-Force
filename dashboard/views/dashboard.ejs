@@ -1,247 +1,96 @@
 <!DOCTYPE html>
 <html>
-
 <head>
+  <title>Flame Force Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
 
-<title>Flame Force Dashboard</title>
+  <style>
+    body{
+      background:linear-gradient(135deg,#020617,#0f172a);
+      color:white;
+    }
 
-<link rel="icon" href="/favicon.png">
+    .logo{
+      animation:pulseGlow 2.2s infinite ease-in-out;
+    }
 
-<style>
+    @keyframes pulseGlow{
+      0%{filter:drop-shadow(0 0 10px rgba(255,80,0,.5));}
+      50%{
+        filter:
+        drop-shadow(0 0 28px rgba(255,80,0,.95))
+        drop-shadow(0 0 50px rgba(255,40,0,.5));
+      }
+      100%{filter:drop-shadow(0 0 10px rgba(255,80,0,.5));}
+    }
 
-body{
-background:#0b0b0b;
-color:white;
-font-family:Arial;
-margin:0;
-}
+    .card{
+      background:rgba(30,41,59,.75);
+      backdrop-filter:blur(12px);
+      border-radius:18px;
+      border:1px solid rgba(255,80,0,.25);
+    }
 
-.topbar{
-
-display:flex;
-align-items:center;
-justify-content:space-between;
-
-background:#111;
-padding:12px 20px;
-
-border-bottom:2px solid #ff4d00;
-
-}
-
-.logo{
-
-height:46px;
-
-animation:glow 2.5s infinite alternate;
-
-}
-
-@keyframes glow{
-
-from{filter:drop-shadow(0 0 3px #ff4d00);}
-to{filter:drop-shadow(0 0 18px #ff4d00);}
-
-}
-
-.nav-buttons a{
-
-margin-left:12px;
-text-decoration:none;
-
-background:#ff4d00;
-color:white;
-
-padding:8px 14px;
-border-radius:6px;
-
-}
-
-.nav-buttons a:hover{
-
-background:#ff7a33;
-
-}
-
-.container{
-
-padding:30px;
-
-}
-
-.create-box{
-
-background:#151515;
-padding:20px;
-border-radius:10px;
-margin-bottom:30px;
-
-}
-
-input,select{
-
-padding:8px;
-margin:6px;
-border-radius:5px;
-border:none;
-
-}
-
-button{
-
-background:#ff4d00;
-border:none;
-padding:10px 14px;
-color:white;
-border-radius:6px;
-
-cursor:pointer;
-
-}
-
-button:hover{
-
-background:#ff7a33;
-
-}
-
-.battle-card{
-
-background:#151515;
-margin-bottom:18px;
-padding:18px;
-border-radius:10px;
-
-display:flex;
-gap:20px;
-
-align-items:center;
-
-}
-
-.poster{
-
-width:120px;
-height:120px;
-object-fit:cover;
-border-radius:8px;
-
-}
-
-</style>
-
+    .poster{
+      border-radius:12px;
+      max-height:180px;
+      object-fit:cover;
+    }
+  </style>
 </head>
 
 <body>
 
+<div class="max-w-7xl mx-auto px-6 py-10">
 
-<!-- TOP NAV BAR -->
+<!-- NAVBAR -->
+<div class="flex justify-between items-center mb-10">
 
-<div class="topbar">
+  <div class="flex items-center gap-4">
+    <img src="/logo.png" class="logo w-14">
+    <h1 class="text-3xl font-bold">Flame Force Dashboard</h1>
+  </div>
 
-<img src="/logo.png" class="logo">
+  <div class="flex gap-3">
 
-<div class="nav-buttons">
+    <% if(roleLevel === "owner" || roleLevel === "admin"){ %>
+      <a href="/dashboard" class="bg-slate-700 px-5 py-2 rounded-xl">Dashboard 🔥</a>
+    <% } %>
 
-<% if(roleLevel === "owner" || roleLevel === "admin"){ %>
+    <a href="/calendar" class="bg-orange-500 px-5 py-2 rounded-xl">Calendar 📅</a>
 
-<a href="/dashboard">Dashboard</a>
+    <a href="/logout" class="bg-red-600 px-5 py-2 rounded-xl">Logout</a>
 
-<% } %>
-
-<a href="/calendar">Calendar</a>
-
-<a href="/logout">Logout</a>
-
+  </div>
 </div>
 
-</div>
 
-
-
-<div class="container">
-
-
-<!-- CREATE BATTLE FORM (ADMIN / OWNER ONLY) -->
-
+<!-- CREATE BATTLE -->
 <% if(roleLevel === "owner" || roleLevel === "admin"){ %>
 
-<div class="create-box">
+<div class="card p-6 mb-10">
 
-<h2>Create Battle</h2>
+<h2 class="text-xl font-semibold mb-4">Create Battle</h2>
 
-<form method="POST" action="/create" enctype="multipart/form-data">
+<form action="/create" method="POST" enctype="multipart/form-data" class="grid grid-cols-2 gap-4">
 
-<select name="host" required>
+<select name="host" required class="text-black p-2 rounded">
+
+<option value="">Select Host</option>
 
 <% agencyMembers.forEach(member=>{ %>
-
-<option value="<%= member.id %>">
-
-<%= member.name %>
-
-</option>
-
+<option value="<%= member.id %>"><%= member.name %></option>
 <% }) %>
 
 </select>
 
+<input type="text" name="opponent" placeholder="Opponent" required class="text-black p-2 rounded">
+<input type="text" name="date" placeholder="DD/MM/YYYY" required class="text-black p-2 rounded">
+<input type="text" name="time" placeholder="HH:MM" required class="text-black p-2 rounded">
 
-<input name="opponent" placeholder="Opponent Username" required>
+<input type="file" name="poster" class="col-span-2">
 
-<input type="date" name="date" required>
-
-<input type="time" name="time" required>
-
-<input type="file" name="poster">
-
-
-<br><br>
-
-
-<label>Manager Gifting</label>
-
-<select name="managerGifting">
-
-<option value="true">Allowed</option>
-<option value="false">Disabled</option>
-
-</select>
-
-
-<label>18+</label>
-
-<select name="adultOnly">
-
-<option value="false">Off</option>
-<option value="true">On</option>
-
-</select>
-
-
-<label>Power Ups</label>
-
-<select name="powerUps">
-
-<option value="true">Allowed</option>
-<option value="false">Disabled</option>
-
-</select>
-
-
-<label>No Hammers</label>
-
-<select name="noHammers">
-
-<option value="true">Enabled</option>
-<option value="false">Disabled</option>
-
-</select>
-
-
-<br><br>
-
-<button>Create Battle</button>
+<button class="bg-orange-500 px-5 py-2 rounded col-span-2">Create Battle</button>
 
 </form>
 
@@ -250,54 +99,36 @@ border-radius:8px;
 <% } %>
 
 
-
-<!-- BATTLE LIST -->
-
-<h2>Scheduled Battles</h2>
+<!-- BATTLES -->
+<div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
 
 <% battles.forEach(b=>{ %>
 
-<div class="battle-card">
+<div class="card p-5">
 
+<img src="/poster/<%= b.id %>?t=<%= Date.now() %>" class="poster mb-4">
 
-<img src="/poster/<%= b.id %>" class="poster">
-
-
-<div>
-
-<h3>
-
-<%= b.hostName %> vs <%= b.opponent %>
-
+<h3 class="text-lg text-orange-400 font-semibold">
+🔥 <%= b.hostName || b.host %> vs <%= b.opponent %>
 </h3>
 
-<p>
-
-📅 <%= b.date %>  
-⏰ <%= b.time %>
-
-</p>
-
-</div>
-
+<p>📅 <%= b.date %></p>
+<p class="mb-3">⏰ <%= b.time %></p>
 
 <% if(roleLevel === "owner" || roleLevel === "admin"){ %>
 
-<form method="POST" action="/delete/<%= b.id %>">
-
-<button>Delete</button>
-
+<form action="/delete/<%= b.id %>" method="POST">
+<button class="bg-red-600 px-3 py-1 rounded">Delete</button>
 </form>
 
 <% } %>
-
 
 </div>
 
 <% }) %>
 
-
 </div>
 
+</div>
 </body>
 </html>
