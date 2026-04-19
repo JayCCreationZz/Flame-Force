@@ -13,6 +13,10 @@ async function initDB() {
 
   try {
 
+    /*
+    CORE TABLE
+    */
+
     await pool.query(`
       CREATE TABLE IF NOT EXISTS battles (
         id SERIAL PRIMARY KEY,
@@ -24,10 +28,20 @@ async function initDB() {
       )
     `);
 
+
+    /*
+    POSTER STORAGE
+    */
+
     await pool.query(`
       ALTER TABLE battles
       ADD COLUMN IF NOT EXISTS posterData BYTEA
     `);
+
+
+    /*
+    RULE FLAGS
+    */
 
     await pool.query(`
       ALTER TABLE battles
@@ -48,6 +62,32 @@ async function initDB() {
       ALTER TABLE battles
       ADD COLUMN IF NOT EXISTS noHammers BOOLEAN DEFAULT false
     `);
+
+
+    /*
+    REMINDER FLAGS
+    */
+
+    await pool.query(`
+      ALTER TABLE battles
+      ADD COLUMN IF NOT EXISTS reminder30 BOOLEAN DEFAULT false
+    `);
+
+    await pool.query(`
+      ALTER TABLE battles
+      ADD COLUMN IF NOT EXISTS reminder10 BOOLEAN DEFAULT false
+    `);
+
+    await pool.query(`
+      ALTER TABLE battles
+      ADD COLUMN IF NOT EXISTS live BOOLEAN DEFAULT false
+    `);
+
+    await pool.query(`
+      ALTER TABLE battles
+      ADD COLUMN IF NOT EXISTS posted BOOLEAN DEFAULT false
+    `);
+
 
     console.log("✅ PostgreSQL schema synced successfully");
 

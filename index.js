@@ -1,67 +1,70 @@
-const { Client, GatewayIntentBits } = require('discord.js');
-const cron = require('node-cron');
-const config = require('./config.json');
-const db = require('./database');
+require("dotenv").config();
+
+const { Client, GatewayIntentBits, AttachmentBuilder } = require("discord.js");
+const cron = require("node-cron");
+const db = require("./database");
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds]
 });
 
-
 /*
 ==============================
-BOT READY EVENT
+READY EVENT
 ==============================
 */
 
-client.once('clientReady', () => {
-  console.log('🔥 Flame Force Battle System Online');
+client.once("clientReady", () => {
+
+  console.log("🔥 Flame Force Battle System Online");
+
 });
 
 
 /*
 ==============================
-ROLE FETCH HELPER
+ROLE PING HELPER
 ==============================
 */
 
 function getRoleMentions(guild) {
 
-  const roleNames = ['Spark', 'Ember', 'Blaze'];
+  const roleNames = ["Spark", "Ember", "Blaze"];
 
-  const mentions = roleNames
+  return roleNames
     .map(name => guild.roles.cache.find(r => r.name === name))
     .filter(Boolean)
     .map(role => `<@&${role.id}>`)
-    .join(' ');
+    .join(" ");
 
-  return mentions || '';
 }
 
 
 /*
 ==============================
-HELPER: UK TIME FUNCTIONS
+UK TIME HELPERS
 ==============================
 */
 
-function getUKTime(offsetMinutes = 0) {
+function getUKTime(offset = 0) {
 
   const now = new Date();
-  now.setMinutes(now.getMinutes() + offsetMinutes);
 
-  return now.toLocaleTimeString('en-GB', {
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone: 'Europe/London'
+  now.setMinutes(now.getMinutes() + offset);
+
+  return now.toLocaleTimeString("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Europe/London"
   });
 
 }
+
 
 function getUKDate() {
 
-  return new Date().toLocaleDateString('en-GB', {
-    timeZone: 'Europe/London'
+  return new Date().toLocaleDateString("en-GB", {
+    timeZone: "Europe/London"
   });
 
 }
@@ -69,91 +72,92 @@ function getUKDate() {
 
 /*
 ==============================
-SLASH COMMAND HANDLER
+POST MESSAGE WITH POSTER
 ==============================
 */
 
-client.on('interactionCreate', async interaction => {
+async function sendBattleMessage(channel, battle, text) {
 
-  if (!interaction.isChatInputCommand()) return;
+  try {
 
-  if (interaction.commandName === 'battle') {
+    const payload = {
+      content: text
+    };
 
-    const sub = interaction.options.getSubcommand();
+    if (battle.posterdata) {
 
-    if (sub === 'create') {
+      payload.files = [
+        new AttachmentBuilder(
+          Buffer.from(battle.posterdata),
+          { name: "battle.jpg" }
+        )
+      ];
 
-      const opponent = interaction.options.getString('opponent');
-      const date = interaction.options.getString('date');
-      const time = interaction.options.getString('time');
-
-      db.run(
-        `INSERT INTO battles (host, opponent, date, time, channel)
-         VALUES (?, ?, ?, ?, ?)`,
-        [
-          interaction.user.username,
-          opponent,
-          date,
-          time,
-          interaction.channel.id
-        ]
-      );
-
-      await interaction.reply(`🔥 **FLAME FORCE BATTLE LOCKED IN**
-
-⚔️ Host: ${interaction.user.username}
-🆚 Opponent: ${opponent}
-📅 Date: ${date}
-🕒 Time: ${time} (UK)
-
-Your battlefield is prepared.
-Summon your supporters. Gather your blessings.
-Victory favours the relentless.`);
     }
+
+    await channel.send(payload);
+
+  } catch (err) {
+
+    console.log("Poster send error:", err.message);
+
   }
-});
+
+}
 
 
 /*
 ==============================
 REMINDER ENGINE
-Runs every minute
 ==============================
 */
 
-cron.schedule('* * * * *', async () => {
+cron.schedule("* * * * *", async () => {
 
-  const nowTime = getUKTime();
-  const today = getUKDate();
+  try {
 
-  const minus10 = getUKTime(10);
-  const minus30 = getUKTime(30);
+    const today = getUKDate();
 
-  db.all(
-    `SELECT * FROM battles WHERE date = ?`,
-    [today],
-    async (err, rows) => {
+    const nowTime = getUKTime();
+    const minus10 = getUKTime(10);
+    const minus30 = getUKTime(30);
 
-      if (!rows || rows.length === 0) return;
+    const result = await db.query(
+      "SELECT * FROM battles WHERE date = $1",
+      [today]
+    );
 
-      rows.forEach(async battle => {
+    if (!result.rows.length) return;
 
-        const channel = client.channels.cache.get(battle.channel);
-        if (!channel) return;
+    for (const battle of result.rows) {
 
-        const guild = channel.guild;
-        const rolePing = getRoleMentions(guild);
+      const channel = await client.channels.fetch(
+        battle.channel
+      );
+
+      if (!channel) continue;
+
+      const rolePing =
+        getRoleMentions(channel.guild);
 
 
-        /*
-        ==============================
-        30 MINUTE WARNING
-        ==============================
-        */
+      /*
+      ==============================
+      30 MINUTE REMINDER
+      ==============================
+      */
 
-        if (battle.time === minus30 && battle.reminder30 === 0) {
+      if (
+        battle.time === minus30 &&
+        !battle.reminder30
+      ) {
 
-          channel.send(`${rolePing}
+        await sendBattleMessage(
+
+          channel,
+          battle,
+
+`${rolePing}
 
 🔥 **BATTLE APPROACHING**
 
@@ -162,24 +166,35 @@ cron.schedule('* * * * *', async () => {
 
 Prepare the arena.
 Charge your blessings.
-Flame Force moves soon.`);
+Flame Force moves soon.`
 
-          db.run(
-            `UPDATE battles SET reminder30 = 1 WHERE id = ?`,
-            [battle.id]
-          );
-        }
+        );
+
+        await db.query(
+          "UPDATE battles SET reminder30 = TRUE WHERE id = $1",
+          [battle.id]
+        );
+
+      }
 
 
-        /*
-        ==============================
-        10 MINUTE WARNING
-        ==============================
-        */
+      /*
+      ==============================
+      10 MINUTE REMINDER
+      ==============================
+      */
 
-        if (battle.time === minus10 && battle.reminder10 === 0) {
+      if (
+        battle.time === minus10 &&
+        !battle.reminder10
+      ) {
 
-          channel.send(`${rolePing}
+        await sendBattleMessage(
+
+          channel,
+          battle,
+
+`${rolePing}
 
 🔥 **FINAL CALL TO ARMS**
 
@@ -188,24 +203,35 @@ Flame Force moves soon.`);
 
 Support squad assemble now.
 Momentum wins battles.
-Flame Force stands together.`);
+Flame Force stands together.`
 
-          db.run(
-            `UPDATE battles SET reminder10 = 1 WHERE id = ?`,
-            [battle.id]
-          );
-        }
+        );
+
+        await db.query(
+          "UPDATE battles SET reminder10 = TRUE WHERE id = $1",
+          [battle.id]
+        );
+
+      }
 
 
-        /*
-        ==============================
-        LIVE ALERT
-        ==============================
-        */
+      /*
+      ==============================
+      LIVE ALERT
+      ==============================
+      */
 
-        if (battle.time === nowTime && battle.live === 0) {
+      if (
+        battle.time === nowTime &&
+        !battle.live
+      ) {
 
-          channel.send(`${rolePing}
+        await sendBattleMessage(
+
+          channel,
+          battle,
+
+`${rolePing}
 
 🔥 **BATTLE LIVE NOW**
 
@@ -215,18 +241,24 @@ Enter the arena.
 Send blessings.
 Push the victory.
 
-Flame Force does not spectate — we dominate.`);
+Flame Force does not spectate — we dominate.`
 
-          db.run(
-            `UPDATE battles SET live = 1 WHERE id = ?`,
-            [battle.id]
-          );
-        }
+        );
 
-      });
+        await db.query(
+          "UPDATE battles SET live = TRUE WHERE id = $1",
+          [battle.id]
+        );
+
+      }
 
     }
-  );
+
+  } catch (err) {
+
+    console.log("Reminder engine error:", err.message);
+
+  }
 
 }, {
   timezone: "Europe/London"
@@ -239,41 +271,55 @@ DAILY BATTLE BOARD
 ==============================
 */
 
-cron.schedule('0 9 * * *', async () => {
+cron.schedule("0 9 * * *", async () => {
 
-  const today = getUKDate();
+  try {
 
-  db.all(
-    `SELECT * FROM battles WHERE date = ? ORDER BY time ASC`,
-    [today],
-    async (err, rows) => {
+    const today = getUKDate();
 
-      if (!rows || rows.length === 0) return;
+    const result = await db.query(
+      "SELECT * FROM battles WHERE date = $1 ORDER BY time ASC",
+      [today]
+    );
 
-      const channel = client.channels.cache.get(rows[0].channel);
-      if (!channel) return;
+    if (!result.rows.length) return;
 
-      const rolePing = getRoleMentions(channel.guild);
+    const firstBattle = result.rows[0];
 
-      let message = `${rolePing}
+    const channel = await client.channels.fetch(
+      firstBattle.channel
+    );
+
+    if (!channel) return;
+
+    const rolePing =
+      getRoleMentions(channel.guild);
+
+    let message = `${rolePing}
 
 🔥 **TODAY'S FLAME FORCE BATTLE BOARD**
 
 `;
 
-      rows.forEach(battle => {
-        message += `⚔️ ${battle.time} — ${battle.host} vs ${battle.opponent}\n`;
-      });
+    result.rows.forEach(battle => {
 
-      message += `
+      message += `⚔️ ${battle.time} — ${battle.host} vs ${battle.opponent}\n`;
+
+    });
+
+    message += `
+
 Support where you can.
 Bless where it counts.
 Victory is collective.`;
 
-      channel.send(message);
+    await channel.send(message);
 
-    }
-  );
+  } catch (err) {
+
+    console.log("Daily board error:", err.message);
+
+  }
 
 }, {
   timezone: "Europe/London"
@@ -286,4 +332,4 @@ LOGIN
 ==============================
 */
 
-client.login(config.token);
+client.login(process.env.TOKEN);
