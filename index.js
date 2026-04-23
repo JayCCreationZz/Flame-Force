@@ -12,16 +12,17 @@ ButtonStyle
 
 const cron = require("node-cron");
 const db = require("./database");
+const fetch = require("node-fetch");
 
 const client = new Client({
-
 intents: [
 GatewayIntentBits.Guilds,
 GatewayIntentBits.GuildMessages,
 GatewayIntentBits.MessageContent
 ]
-
 });
+
+const sentReminders = new Set();
 
 /*
 BOT READY
@@ -36,7 +37,7 @@ console.log(
 });
 
 /*
-POST BATTLE EMBED
+POST BATTLE TO DISCORD
 */
 
 async function postBattleNow(battle){
@@ -48,7 +49,12 @@ await client.channels.fetch(
 process.env.BATTLE_CHANNEL_ID
 );
 
-if(!channel) return;
+if(!channel){
+
+console.log("❌ Missing BATTLE_CHANNEL_ID");
+return;
+
+}
 
 const embed = new EmbedBuilder()
 
@@ -58,7 +64,7 @@ const embed = new EmbedBuilder()
 
 {
 name:"Host",
-value:battle.hostname || battle.host,
+value:battle.hostname || battle.host || "Unknown",
 inline:true
 },
 
@@ -86,11 +92,14 @@ inline:true
 
 .setTimestamp();
 
-if(battle.livelink)
+if(battle.livelink){
+
 embed.addFields({
 name:"Live Link",
 value:battle.livelink
 });
+
+}
 
 await channel.send({
 
@@ -103,15 +112,12 @@ files: battle.posterdata
 });
 
 console.log(
-`📢 Poster sent to Discord: ${battle.hostname || battle.host} vs ${battle.opponent}`
+`📢 Battle posted: ${battle.hostname || battle.host} vs ${battle.opponent}`
 );
 
 }catch(err){
 
-console.log(
-"Battle post error:",
-err.message
-);
+console.log("❌ Battle post error:", err.message);
 
 }
 
@@ -130,19 +136,24 @@ await client.channels.fetch(
 process.env.REQUEST_CHANNEL_ID
 );
 
-if(!channel) return;
+if(!channel){
+
+console.log("❌ REQUEST_CHANNEL_ID missing");
+return;
+
+}
 
 const row =
 new ActionRowBuilder().addComponents(
 
 new ButtonBuilder()
 .setCustomId(`approve_${request.id}`)
-.setLabel("Approve Battle")
+.setLabel("Approve")
 .setStyle(ButtonStyle.Success),
 
 new ButtonBuilder()
 .setCustomId(`reject_${request.id}`)
-.setLabel("Reject Request")
+.setLabel("Reject")
 .setStyle(ButtonStyle.Danger)
 
 );
@@ -180,13 +191,14 @@ components:[row]
 
 });
 
+console.log("✅ Request embed sent with buttons");
+
 }
 
-module.exports.sendBattleRequestEmbed =
-sendBattleRequestEmbed;
+module.exports.sendBattleRequestEmbed = sendBattleRequestEmbed;
 
 /*
-APPROVE / REJECT BUTTON HANDLER
+BUTTON HANDLER (APPROVE / REJECT)
 */
 
 client.on(Events.InteractionCreate, async interaction => {
@@ -195,6 +207,10 @@ if(!interaction.isButton()) return;
 
 const [action, requestId] =
 interaction.customId.split("_");
+
+/*
+REJECT REQUEST
+*/
 
 if(action === "reject"){
 
@@ -213,11 +229,11 @@ ephemeral:true
 
 }
 
-if(action !== "approve") return;
-
 /*
-FETCH REQUEST
+APPROVE REQUEST
 */
+
+if(action !== "approve") return;
 
 const result =
 await db.query(
@@ -225,14 +241,17 @@ await db.query(
 [requestId]
 );
 
-if(!result.rows.length)
+if(!result.rows.length){
+
 return interaction.reply({
 
-content:"Request not found",
+content:"❌ Request not found",
 
 ephemeral:true
 
 });
+
+}
 
 const request = result.rows[0];
 
@@ -273,10 +292,6 @@ await fetch(attachment.url);
 const buffer =
 Buffer.from(await response.arrayBuffer());
 
-/*
-INSERT BATTLE
-*/
-
 const inserted =
 await db.query(
 
@@ -296,7 +311,7 @@ buffer
 );
 
 /*
-POST TO CHANNEL
+POST BATTLE
 */
 
 await postBattleNow(inserted.rows[0]);
@@ -322,8 +337,7 @@ if(!collected.size){
 
 interaction.followUp({
 
-content:
-"❌ Poster upload timed out",
+content:"❌ Poster upload timed out",
 
 ephemeral:true
 
@@ -336,19 +350,24 @@ ephemeral:true
 });
 
 /*
-REMINDER SYSTEM
+REMINDER SYSTEM (30 MIN BEFORE)
 */
 
 cron.schedule("*/5 * * * *", async () => {
 
+try{
+
 const battles =
-await db.query(
-"SELECT * FROM battles"
-);
+await db.query("SELECT * FROM battles");
 
 const now = new Date();
 
 for(const battle of battles.rows){
+
+const key =
+`${battle.id}_${battle.date}_${battle.time}`;
+
+if(sentReminders.has(key)) continue;
 
 const battleTime =
 new Date(`${battle.date} ${battle.time}`);
@@ -363,22 +382,38 @@ await client.channels.fetch(
 process.env.REMINDER_CHANNEL_ID
 );
 
-if(!channel) return;
+if(channel){
 
 await channel.send(
 
-`⏰ Reminder: ${battle.hostname || battle.host} vs ${battle.opponent} starts in 30 minutes!`
+`⏰ Reminder: ${
+battle.hostname || battle.host
+} vs ${battle.opponent} starts in 30 minutes!`
 
+);
+
+sentReminders.add(key);
+
+console.log(
+`⏰ Reminder sent for battle ${battle.id}`
 );
 
 }
 
 }
 
+}
+
+}catch(err){
+
+console.log("❌ Reminder error:", err.message);
+
+}
+
 });
 
 /*
-LOGIN
+LOGIN BOT
 */
 
 client.login(process.env.TOKEN);
