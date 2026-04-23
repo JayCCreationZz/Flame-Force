@@ -64,16 +64,6 @@ required
 class="w-full px-3 py-2 rounded-lg bg-slate-800"
 />
 
-
-<label>Opponent Creator</label>
-
-<input
-name="opponent"
-required
-class="w-full px-3 py-2 rounded-lg bg-slate-800"
-/>
-
-
 <div class="grid grid-cols-2 gap-3">
 
 <div>
@@ -131,7 +121,8 @@ Submit Battle Request 🚀
 
 <!-- SUCCESS MESSAGE -->
 
-<% if(success){ %>
+<% if(typeof success !== "undefined" && success){ %>
+
 
 <div class="mt-6 bg-green-600 px-6 py-3 rounded-lg">
 
