@@ -28,7 +28,7 @@ const sentReminders = new Set();
 BOT READY
 */
 
-client.once("ready", () => {
+client.once("clientReady", () => {
 
 console.log(
 `🔥 Battle Bot online as ${client.user.tag}`
@@ -37,7 +37,7 @@ console.log(
 });
 
 /*
-POST BATTLE TO DISCORD
+POST BATTLE EMBED
 */
 
 async function postBattleNow(battle){
@@ -70,7 +70,7 @@ inline:true
 
 {
 name:"Opponent",
-value:battle.opponent,
+value:battle.opponent || "Unknown",
 inline:true
 },
 
@@ -92,14 +92,22 @@ inline:true
 
 .setTimestamp();
 
+/*
+Optional LIVE link
+*/
+
 if(battle.livelink){
 
 embed.addFields({
-name:"Live Link",
+name:"🔴 LIVE",
 value:battle.livelink
 });
 
 }
+
+/*
+Send message
+*/
 
 await channel.send({
 
@@ -112,7 +120,9 @@ files: battle.posterdata
 });
 
 console.log(
-`📢 Battle posted: ${battle.hostname || battle.host} vs ${battle.opponent}`
+`📢 Battle posted: ${
+battle.hostname || battle.host
+} vs ${battle.opponent}`
 );
 
 }catch(err){
@@ -126,7 +136,7 @@ console.log("❌ Battle post error:", err.message);
 module.exports.postBattleNow = postBattleNow;
 
 /*
-SEND REQUEST EMBED WITH BUTTONS
+SEND REQUEST EMBED WITH APPROVE / REJECT BUTTONS
 */
 
 async function sendBattleRequestEmbed(request){
@@ -198,7 +208,7 @@ console.log("✅ Request embed sent with buttons");
 module.exports.sendBattleRequestEmbed = sendBattleRequestEmbed;
 
 /*
-BUTTON HANDLER (APPROVE / REJECT)
+APPROVE / REJECT BUTTON HANDLER
 */
 
 client.on(Events.InteractionCreate, async interaction => {
@@ -265,17 +275,16 @@ ephemeral:true
 });
 
 /*
-WAIT FOR POSTER UPLOAD
+WAIT FOR POSTER
 */
-
-const filter = msg =>
-msg.author.id === interaction.user.id &&
-msg.attachments.size > 0;
 
 const collector =
 interaction.channel.createMessageCollector({
 
-filter,
+filter: msg =>
+msg.author.id === interaction.user.id &&
+msg.attachments.size > 0,
+
 max:1,
 time:60000
 
@@ -292,15 +301,20 @@ await fetch(attachment.url);
 const buffer =
 Buffer.from(await response.arrayBuffer());
 
+/*
+INSERT APPROVED BATTLE
+*/
+
 const inserted =
 await db.query(
 
 `INSERT INTO battles
-(host, opponent, date, time, posterdata)
-VALUES ($1,$2,$3,$4,$5)
+(host, hostname, opponent, date, time, posterdata)
+VALUES ($1,$2,$3,$4,$5,$6)
 RETURNING *`,
 
 [
+request.requester,
 request.requester,
 request.opponent,
 request.preferred_date,
@@ -311,13 +325,13 @@ buffer
 );
 
 /*
-POST BATTLE
+POST TO DISCORD
 */
 
 await postBattleNow(inserted.rows[0]);
 
 /*
-REMOVE REQUEST
+DELETE REQUEST ENTRY
 */
 
 await db.query(
@@ -330,6 +344,10 @@ await msg.reply(
 );
 
 });
+
+/*
+TIMEOUT FAILSAFE
+*/
 
 collector.on("end", collected => {
 
@@ -350,7 +368,7 @@ ephemeral:true
 });
 
 /*
-REMINDER SYSTEM (30 MIN BEFORE)
+30 MINUTE REMINDER SYSTEM
 */
 
 cron.schedule("*/5 * * * *", async () => {
@@ -413,7 +431,7 @@ console.log("❌ Reminder error:", err.message);
 });
 
 /*
-LOGIN BOT
+LOGIN
 */
 
 client.login(process.env.TOKEN);

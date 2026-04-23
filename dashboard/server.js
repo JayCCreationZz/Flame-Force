@@ -2,34 +2,13 @@ require("dotenv").config();
 
 const express = require("express");
 const session = require("express-session");
-const passport = require("passport");
-const DiscordStrategy = require("passport-discord").Strategy;
 const path = require("path");
 const multer = require("multer");
-const fetch = require("node-fetch");
+const axios = require("axios");
 
-const { pool } = require("../database");
+const pool = require("../database");
 
 const app = express();
-
-/*
-========================================
-CONFIG
-========================================
-*/
-
-const ADMIN_ROLE_IDS = [
-  process.env.ADMIN_ROLE_ID,
-  process.env.OWNER_ROLE_ID
-];
-
-const REQUEST_WEBHOOK = process.env.REQUEST_WEBHOOK_URL;
-
-/*
-========================================
-MIDDLEWARE
-========================================
-*/
 
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
@@ -37,305 +16,213 @@ app.set("views", path.join(__dirname, "views"));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-app.use(express.static(path.join(__dirname, "public")));
+app.use(session({
+  secret: "flame-force-secret",
+  resave: false,
+  saveUninitialized: false
+}));
 
-app.use(
-  session({
-    secret: "flameforce-secret",
-    resave: false,
-    saveUninitialized: false
-  })
-);
-
-app.use(passport.initialize());
-app.use(passport.session());
+const upload = multer({ storage: multer.memoryStorage() });
 
 /*
-========================================
-DISCORD AUTH
-========================================
+Ensure request table exists at runtime
+(prevents Railway crash loops)
 */
+(async () => {
+  try {
 
-passport.serializeUser((user, done) => done(null, user));
-passport.deserializeUser((obj, done) => done(null, obj));
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS battle_requests (
+        id SERIAL PRIMARY KEY,
+        requester TEXT,
+        agency TEXT,
+        opponent TEXT,
+        preferred_date TEXT,
+        preferred_time TEXT,
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
 
-passport.use(
-  new DiscordStrategy(
-    {
-      clientID: process.env.CLIENT_ID,
-      clientSecret: process.env.CLIENT_SECRET,
-      callbackURL: process.env.CALLBACK_URL,
-      scope: ["identify", "guilds", "guilds.members.read"]
-    },
-    (accessToken, refreshToken, profile, done) => {
-      process.nextTick(() => done(null, profile));
-    }
-  )
-);
+    console.log("✅ battle_requests table ready");
 
-/*
-========================================
-FILE UPLOAD
-========================================
-*/
+  } catch (err) {
 
-const storage = multer.diskStorage({
-  destination: "./dashboard/public/posters",
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + "-" + file.originalname);
+    console.error("❌ request table init failed:", err);
+
   }
-});
-
-const upload = multer({ storage });
+})();
 
 /*
-========================================
-AUTH HELPERS
-========================================
+Dashboard Home
 */
+app.get("/", async (req, res) => {
 
-function checkAuth(req, res, next) {
-  if (!req.isAuthenticated()) {
-    return res.redirect("/login");
-  }
-  next();
-}
-
-function isAdmin(req) {
-  if (!req.user || !req.user.guilds) return false;
-
-  return req.user.guilds.some(g =>
-    ADMIN_ROLE_IDS.includes(g.id)
-  );
-}
-
-/*
-========================================
-LOGIN ROUTES
-========================================
-*/
-
-app.get("/login", passport.authenticate("discord"));
-
-app.get(
-  "/callback",
-  passport.authenticate("discord", {
-    failureRedirect: "/"
-  }),
-  (req, res) => {
-    res.redirect("/");
-  }
-);
-
-app.get("/logout", (req, res) => {
-  req.logout(() => {
-    res.redirect("/");
-  });
-});
-
-/*
-========================================
-HOME / DASHBOARD
-========================================
-*/
-
-app.get("/", checkAuth, async (req, res) => {
   const battles = await pool.query(
-    "SELECT * FROM battles ORDER BY date ASC"
+    "SELECT * FROM battles ORDER BY date ASC, time ASC"
   );
 
   res.render("dashboard", {
-    user: req.user,
     battles: battles.rows,
-    isAdmin: isAdmin(req)
+    success: null
   });
+
 });
 
 /*
-========================================
-CALENDAR VIEW (ALL MEMBERS)
-========================================
+Calendar View (visible to all members)
 */
+app.get("/calendar", async (req, res) => {
 
-app.get("/calendar", checkAuth, async (req, res) => {
   const battles = await pool.query(
-    "SELECT * FROM battles ORDER BY date ASC"
+    "SELECT * FROM battles ORDER BY date ASC, time ASC"
   );
 
   res.render("calendar", {
-    battles: battles.rows,
-    isAdmin: isAdmin(req)
+    battles: battles.rows
   });
+
 });
 
 /*
-========================================
-CREATE BATTLE (ADMINS ONLY)
-========================================
+Create Battle
+(Admin / Owner)
 */
+app.post("/create-battle", upload.single("poster"), async (req, res) => {
 
-app.post(
-  "/create-battle",
-  checkAuth,
-  upload.single("poster"),
-  async (req, res) => {
-    if (!isAdmin(req)) return res.redirect("/");
+  try {
 
-    const { title, host, opponent, date, time } = req.body;
+    const {
+      host,
+      opponent,
+      date,
+      time,
+      managergifting,
+      adultonly,
+      powerups,
+      nohammers
+    } = req.body;
 
-    const poster = req.file
-      ? "/posters/" + req.file.filename
-      : null;
+    const poster = req.file ? req.file.buffer : null;
 
     await pool.query(
       `
       INSERT INTO battles
-      (title, host, opponent, date, time, poster)
-      VALUES ($1,$2,$3,$4,$5,$6)
-    `,
-      [title, host, opponent, date, time, poster]
+      (host, opponent, date, time, posterdata,
+       managergifting, adultonly, powerups, nohammers)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+      `,
+      [
+        host,
+        opponent,
+        date,
+        time,
+        poster,
+        managergifting === "on",
+        adultonly === "on",
+        powerups === "on",
+        nohammers === "on"
+      ]
     );
 
     res.redirect("/");
+
+  } catch (err) {
+
+    console.error(err);
+    res.redirect("/");
+
   }
-);
 
-/*
-========================================
-REQUEST PAGE
-========================================
-*/
-
-app.get("/request", (req, res) => {
-  res.render("request", { success: false });
 });
 
 /*
-========================================
-SUBMIT REQUEST
-========================================
+Battle Request Form Page
 */
+app.get("/request", (req, res) => {
 
-app.post("/request", async (req, res) => {
-  const {
-    agency,
-    requester,
-    opponent,
-    preferred_date,
-    preferred_time,
-    notes
-  } = req.body;
+  res.render("request", {
+    success: false
+  });
 
-  await pool.query(
-    `
-    INSERT INTO battle_requests
-    (agency, requester, opponent,
-     preferred_date, preferred_time, notes)
-    VALUES ($1,$2,$3,$4,$5,$6)
-  `,
-    [
-      agency,
+});
+
+/*
+Submit Battle Request
+*/
+app.post("/submit-request", async (req, res) => {
+
+  try {
+
+    const {
       requester,
+      agency,
       opponent,
       preferred_date,
       preferred_time,
       notes
-    ]
-  );
+    } = req.body;
 
-  /*
-  SEND TO DISCORD REQUEST CHANNEL
-  */
+    await pool.query(
+      `
+      INSERT INTO battle_requests
+      (requester, agency, opponent,
+       preferred_date, preferred_time, notes)
+      VALUES ($1,$2,$3,$4,$5,$6)
+      `,
+      [
+        requester,
+        agency,
+        opponent,
+        preferred_date,
+        preferred_time,
+        notes
+      ]
+    );
 
-  if (REQUEST_WEBHOOK) {
-    await fetch(REQUEST_WEBHOOK, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
+    /*
+    Optional webhook alert
+    */
+
+    if (process.env.REQUEST_WEBHOOK_URL) {
+
+      await axios.post(process.env.REQUEST_WEBHOOK_URL, {
+
         embeds: [
           {
             title: "🔥 New Battle Request",
-            color: 16753920,
             fields: [
-              {
-                name: "Agency",
-                value: agency
-              },
-              {
-                name: "Requester",
-                value: requester
-              },
-              {
-                name: "Opponent",
-                value: opponent
-              },
-              {
-                name: "Preferred Date",
-                value: preferred_date
-              },
-              {
-                name: "Preferred Time",
-                value: preferred_time
-              },
-              {
-                name: "Notes",
-                value: notes || "None"
-              }
-            ]
+              { name: "Requester", value: requester },
+              { name: "Agency", value: agency },
+              { name: "Opponent", value: opponent },
+              { name: "Preferred Date", value: preferred_date },
+              { name: "Preferred Time", value: preferred_time },
+              { name: "Notes", value: notes || "None" }
+            ],
+            color: 16753920
           }
         ]
-      })
+
+      });
+
+    }
+
+    res.render("request", {
+      success: true
     });
+
+  } catch (err) {
+
+    console.error(err);
+
+    res.render("request", {
+      success: false
+    });
+
   }
 
-  res.render("request", { success: true });
 });
 
-/*
-========================================
-DATABASE TABLE AUTO-CREATION
-========================================
-*/
-
-(async () => {
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS battles (
-      id SERIAL PRIMARY KEY,
-      title TEXT,
-      host TEXT,
-      opponent TEXT,
-      date DATE,
-      time TEXT,
-      poster TEXT
-    )
-  `);
-
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS battle_requests (
-      id SERIAL PRIMARY KEY,
-      agency TEXT,
-      requester TEXT,
-      opponent TEXT,
-      preferred_date TEXT,
-      preferred_time TEXT,
-      notes TEXT,
-      status TEXT DEFAULT 'pending'
-    )
-  `);
-
-  console.log("✅ PostgreSQL connected & schema synced successfully");
-})();
-
-/*
-========================================
-START SERVER
-========================================
-*/
-
-const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => {
+app.listen(process.env.PORT || 3000, () => {
   console.log("🔥 Dashboard running");
 });
