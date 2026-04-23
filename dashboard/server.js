@@ -4,18 +4,23 @@ const passport = require("passport");
 const DiscordStrategy = require("passport-discord").Strategy;
 const path = require("path");
 const multer = require("multer");
-const fs = require("fs");
 const db = require("../database");
+const fetch = require("node-fetch");
 
 require("dotenv").config();
 
 const app = express();
+
+/* ============================
+   BASIC APP SETUP
+============================ */
 
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+app.use(express.static(path.join(__dirname, "public")));
 
 app.use(
   session({
@@ -28,11 +33,9 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 
-/*
-============================
-OAUTH SAFE MODE CHECK
-============================
-*/
+/* ============================
+   OAUTH ENABLE CHECK
+============================ */
 
 const oauthEnabled =
   process.env.DISCORD_CLIENT_ID &&
@@ -40,11 +43,10 @@ const oauthEnabled =
   process.env.DISCORD_CALLBACK_URL &&
   process.env.GUILD_ID &&
   process.env.ADMIN_ROLE_ID &&
-  process.env.OWNER_ROLE_ID;
+  process.env.OWNER_ROLE_ID &&
+  process.env.TOKEN;
 
 if (oauthEnabled) {
-  console.log("✅ Discord OAuth enabled");
-
   passport.serializeUser((user, done) => done(null, user));
   passport.deserializeUser((obj, done) => done(null, obj));
 
@@ -57,81 +59,74 @@ if (oauthEnabled) {
         scope: ["identify", "guilds", "guilds.members.read"]
       },
       (accessToken, refreshToken, profile, done) => {
+        profile._accessToken = accessToken;
         return done(null, profile);
       }
     )
   );
 
-  app.get(
-    "/login",
-    passport.authenticate("discord")
-  );
+  app.get("/login", passport.authenticate("discord"));
 
   app.get(
     "/auth/discord/callback",
-    passport.authenticate("discord", {
-      failureRedirect: "/"
-    }),
+    passport.authenticate("discord", { failureRedirect: "/" }),
     (req, res) => res.redirect("/")
   );
 
   app.get("/logout", (req, res) => {
     req.logout(() => res.redirect("/"));
   });
-
 } else {
-  console.log("⚠️ Discord OAuth disabled (missing env variables)");
-
-  app.get("/login", (_, res) =>
-    res.send("OAuth not configured.")
-  );
-
-  app.get("/logout", (_, res) =>
-    res.redirect("/")
-  );
+  app.get("/login", (_, res) => res.send("OAuth not configured."));
+  app.get("/logout", (_, res) => res.redirect("/"));
 }
 
-/*
-============================
-ROLE DETECTION
-============================
-*/
+/* ============================
+   ROLE DETECTION
+============================ */
 
-function getRoleLevel(req) {
+async function fetchMemberRoles(userId) {
+  const url = `https://discord.com/api/v10/guilds/${process.env.GUILD_ID}/members/${userId}`;
+
+  const res = await fetch(url, {
+    headers: { Authorization: `Bot ${process.env.TOKEN}` }
+  });
+
+  if (!res.ok) return null;
+
+  const data = await res.json();
+  return data.roles || [];
+}
+
+async function resolveRoleLevel(req) {
   if (!oauthEnabled || !req.user) return "guest";
 
-  const guild = req.user.guilds?.find(
-    g => g.id === process.env.GUILD_ID
-  );
+  try {
+    const roles = await fetchMemberRoles(req.user.id);
+    if (!roles) return "guest";
 
-  if (!guild) return "guest";
-
-  const roles = guild.roles || [];
-
-  if (roles.includes(process.env.OWNER_ROLE_ID)) return "owner";
-  if (roles.includes(process.env.ADMIN_ROLE_ID)) return "admin";
-
-  return "member";
+    if (roles.includes(process.env.OWNER_ROLE_ID)) return "owner";
+    if (roles.includes(process.env.ADMIN_ROLE_ID)) return "admin";
+    return "member";
+  } catch {
+    return "guest";
+  }
 }
 
-/*
-============================
-FILE UPLOAD STORAGE
-============================
-*/
-
-const storage = multer.memoryStorage();
-
-const upload = multer({
-  storage,
-  limits: { fileSize: 8 * 1024 * 1024 }
+app.use(async (req, _res, next) => {
+  req.roleLevel = await resolveRoleLevel(req);
+  next();
 });
 
-/*
-============================
-POSTER ROUTE
-============================
-*/
+/* ============================
+   FILE UPLOAD
+============================ */
+
+const upload = multer({ storage: multer.memoryStorage() });
+
+/* ============================
+   POSTER ROUTE
+============================ */
 
 app.get("/poster/:id", async (req, res) => {
   const result = await db.query(
@@ -146,121 +141,114 @@ app.get("/poster/:id", async (req, res) => {
   res.send(result.rows[0].posterdata);
 });
 
-/*
-============================
-DASHBOARD
-============================
-*/
+/* ============================
+   DASHBOARD
+============================ */
 
 app.get("/", async (req, res) => {
+  const battles = await db.query(
+    `SELECT * FROM battles ORDER BY date ASC, time ASC`
+  );
 
-  const battles = await db.query(`
-    SELECT *,
-    host AS hostname
-    FROM battles
-    ORDER BY date ASC
+  const agencyMembers = await db.query(`
+    SELECT id, username
+    FROM agency_members
+    ORDER BY username ASC
   `);
 
   res.render("dashboard", {
     battles: battles.rows,
+    agencyMembers: agencyMembers.rows,
     user: req.user || null,
-    roleLevel: getRoleLevel(req)
+    roleLevel: req.roleLevel || "guest"
   });
 });
 
-/*
-============================
-CALENDAR VIEW
-============================
-*/
+/* ============================
+   CALENDAR
+============================ */
 
 app.get("/calendar", async (req, res) => {
-
-  const battles = await db.query(`
-    SELECT *,
-    host AS hostname
-    FROM battles
-    ORDER BY date ASC
-  `);
+  const battles = await db.query(
+    `SELECT * FROM battles ORDER BY date ASC, time ASC`
+  );
 
   res.render("calendar", {
     battles: battles.rows,
     user: req.user || null,
-    roleLevel: getRoleLevel(req)
+    roleLevel: req.roleLevel || "guest"
   });
 });
 
-/*
-============================
-CREATE BATTLE (ADMIN ONLY)
-============================
-*/
+/* ============================
+   CREATE BATTLE
+============================ */
 
-app.post(
-  "/create-battle",
-  upload.single("poster"),
-  async (req, res) => {
+app.post("/create-battle", upload.single("poster"), async (req, res) => {
+  if (!["admin", "owner"].includes(req.roleLevel)) return res.redirect("/");
 
-    const role = getRoleLevel(req);
+  const {
+    host,
+    hostName,
+    opponent,
+    date,
+    time,
+    liveLink,
+    managergifting,
+    adultonly,
+    powerups,
+    nohammers
+  } = req.body;
 
-    if (role !== "admin" && role !== "owner")
-      return res.redirect("/");
-
-    const {
+  await db.query(
+    `
+    INSERT INTO battles
+    (host, hostName, opponent, date, time,
+     livelink, managergifting, adultonly,
+     powerups, nohammers, posterdata)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+    `,
+    [
       host,
+      hostName,
       opponent,
       date,
       time,
-      managergifting,
-      adultonly,
-      powerups,
-      nohammers
-    } = req.body;
+      liveLink || null,
+      managergifting === "on",
+      adultonly === "on",
+      powerups === "on",
+      nohammers === "on",
+      req.file ? req.file.buffer : null
+    ]
+  );
 
-    await db.query(
-      `
-      INSERT INTO battles
-      (host, opponent, date, time,
-       managergifting, adultonly,
-       powerups, nohammers,
-       posterdata)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-      `,
-      [
-        host,
-        opponent,
-        date,
-        time,
-        managergifting === "on",
-        adultonly === "on",
-        powerups === "on",
-        nohammers === "on",
-        req.file ? req.file.buffer : null
-      ]
-    );
-
-    res.redirect("/");
-  }
-);
-
-/*
-============================
-REQUEST PAGE
-============================
-*/
-
-app.get("/request", (_, res) => {
-  res.render("request");
+  res.redirect("/");
 });
 
-/*
-============================
-SERVER START
-============================
-*/
+/* ============================
+   REQUEST PAGE
+============================ */
 
-const PORT = process.env.PORT || 3000;
+app.get("/request", (req, res) => {
+  res.render("request", {
+    user: req.user || null,
+    roleLevel: req.roleLevel || "guest",
+    success: false
+  });
+});
 
-app.listen(PORT, () =>
-  console.log(`🔥 Dashboard running on port ${PORT}`)
-);
+app.post("/request", async (req, res) => {
+  res.render("request", {
+    user: req.user || null,
+    roleLevel: req.roleLevel || "guest",
+    success: true
+  });
+});
+
+/* ============================
+   START SERVER
+============================ */
+
+const PORT = process.env.PORT || 8080;
+app.listen(PORT, () => console.log(`🔥 Dashboard running on port ${PORT}`));

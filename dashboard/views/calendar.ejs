@@ -1,23 +1,23 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Battle Calendar</title>
+<title>Flame Force Calendar</title>
 <script src="https://cdn.tailwindcss.com"></script>
 </head>
 
 <body class="bg-slate-950 text-white min-h-screen">
 
-<div class="max-w-6xl mx-auto p-6">
+<div class="max-w-7xl mx-auto p-6">
 
-<!-- HEADER NAV -->
 
+<!-- HEADER -->
 <div class="flex justify-between items-center mb-8">
 
 <h1 class="text-3xl font-bold">
-📅 Battle Calendar
+🔥 Flame Force Battle Calendar
 </h1>
 
-<div class="flex gap-4">
+<div class="flex gap-4 items-center">
 
 <a href="/" class="bg-slate-800 px-4 py-2 rounded-lg">
 Dashboard
@@ -31,61 +31,138 @@ Calendar
 Request Battle
 </a>
 
-</div>
-
-</div>
-
-
-<!-- CALENDAR GRID -->
-
-<div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-
-<% battles.forEach(battle => { %>
-
-<div class="bg-slate-900 rounded-2xl shadow-xl overflow-hidden">
-
-<% if (battle.posterdata) { %>
-
-<img src="/poster/<%= battle.id %>" class="w-full object-cover"/>
-
+<% if (roleLevel === "owner" || roleLevel === "admin") { %>
+<a href="/" class="bg-indigo-600 px-4 py-2 rounded-lg">
+Switch to Dashboard
+</a>
 <% } %>
 
-<div class="p-4">
+<% if (!user) { %>
 
-<h3 class="text-lg font-bold">
+<a href="/login" class="bg-indigo-600 px-4 py-2 rounded-lg">
+Login with Discord
+</a>
 
-<%= battle.hostname || battle.host %>
-vs
-<%= battle.opponent %>
+<% } else { %>
 
-</h3>
+<span class="text-slate-400">
+Logged in as <%= user.username %>
+</span>
 
-<p class="text-sm text-slate-400">
-📅 <%= battle.date %> ⏰ <%= battle.time %>
-</p>
-
-
-<% if (battle.livelink) { %>
-
-<a href="<%= battle.livelink %>"
-target="_blank"
-class="inline-block mt-3 bg-red-600 px-4 py-2 rounded-lg">
-
-🔴 Watch Live
-
+<a href="/logout" class="bg-slate-800 px-4 py-2 rounded-lg">
+Logout
 </a>
 
 <% } %>
 
 </div>
+</div>
 
+
+<!-- GROUPING LOGIC -->
+<%
+const today = new Date();
+today.setHours(0,0,0,0);
+
+function parseDate(d) {
+  const parts = d.split("-");
+  return new Date(parts[0], parts[1]-1, parts[2]);
+}
+
+const groups = {
+  today: [],
+  tomorrow: [],
+  week: [],
+  future: []
+};
+
+battles.forEach(b => {
+  const d = parseDate(b.date);
+  const diff = (d - today) / (1000*60*60*24);
+
+  if (diff === 0) groups.today.push(b);
+  else if (diff === 1) groups.tomorrow.push(b);
+  else if (diff > 1 && diff <= 7) groups.week.push(b);
+  else if (diff > 7) groups.future.push(b);
+});
+%>
+
+
+<!-- SECTION COMPONENT -->
+<%
+function renderSection(title, list) {
+  if (!list.length) return;
+%>
+
+<h2 class="text-2xl font-bold mt-10 mb-4"><%= title %></h2>
+
+<div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+<% list.forEach(battle => { %>
+
+<div class="bg-slate-900 rounded-2xl shadow-xl overflow-hidden">
+
+<% if (battle.posterdata) { %>
+<img
+src="/poster/<%= battle.id %>"
+class="w-full object-cover"
+/>
+<% } %>
+
+<div class="p-4">
+
+<h3 class="text-lg font-bold">
+<%= battle.hostname || battle.host %> vs <%= battle.opponent %>
+</h3>
+
+<p class="text-sm text-slate-400">
+📅 <%= battle.date %>  
+⏰ <%= battle.time %>
+</p>
+
+<% if (battle.managergifting) { %>
+<p class="text-green-400 text-sm">Manager gifting allowed</p>
+<% } %>
+
+<% if (battle.adultonly) { %>
+<p class="text-red-400 text-sm">18+</p>
+<% } %>
+
+<% if (battle.powerups) { %>
+<p class="text-yellow-400 text-sm">Power ups allowed</p>
+<% } %>
+
+<% if (battle.nohammers) { %>
+<p class="text-purple-400 text-sm">No hammers</p>
+<% } %>
+
+<% if (battle.livelink) { %>
+<a
+href="<%= battle.livelink %>"
+target="_blank"
+class="inline-block mt-3 bg-red-600 px-4 py-2 rounded-lg"
+>
+🔴 Watch Live
+</a>
+<% } %>
+
+</div>
 </div>
 
 <% }) %>
 
 </div>
 
-</div>
+<% } %>
 
+
+<!-- RENDER SECTIONS -->
+<% renderSection("🔥 Today", groups.today); %>
+<% renderSection("🌙 Tomorrow", groups.tomorrow); %>
+<% renderSection("📅 This Week", groups.week); %>
+<% renderSection("📆 Future Battles", groups.future); %>
+
+
+</div>
 </body>
 </html>
