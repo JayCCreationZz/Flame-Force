@@ -72,16 +72,17 @@ if (oauthEnabled) {
 
   passport.use(
     new DiscordStrategy(
-    {
-      clientID: process.env.DISCORD_CLIENT_ID,
-      clientSecret: process.env.DISCORD_CLIENT_SECRET,
-      callbackURL: process.env.DISCORD_CALLBACK_URL,
-      scope: ["identify", "guilds", "guilds.members.read"]
-    },
-    (accessToken, refreshToken, profile, done) => {
-      profile._accessToken = accessToken;
-      return done(null, profile);
-    })
+      {
+        clientID: process.env.DISCORD_CLIENT_ID,
+        clientSecret: process.env.DISCORD_CLIENT_SECRET,
+        callbackURL: process.env.DISCORD_CALLBACK_URL,
+        scope: ["identify", "guilds", "guilds.members.read"]
+      },
+      (accessToken, refreshToken, profile, done) => {
+        profile._accessToken = accessToken;
+        return done(null, profile);
+      }
+    )
   );
 
   app.get("/login", passport.authenticate("discord"));
@@ -144,30 +145,98 @@ app.use(async (req, _res, next) => {
 const upload = multer({ storage: multer.memoryStorage() });
 
 /* ============================
-   DISCORD AVATAR HELPER
+   DISCORD HELPERS
 ============================ */
 
-async function getDiscordAvatarUrl(userId) {
-  if (!oauthEnabled) return null;
+function buildAvatarUrl(user, member) {
+  // Prefer guild avatar if present, else user avatar, else default
+  const guildAvatar = member && member.avatar;
+  const userAvatar = user && user.avatar;
+
+  if (guildAvatar) {
+    const ext = guildAvatar.startsWith("a_") ? "gif" : "png";
+    return `https://cdn.discordapp.com/guilds/${process.env.GUILD_ID}/users/${user.id}/avatars/${guildAvatar}.${ext}?size=128`;
+  }
+
+  if (userAvatar) {
+    const ext = userAvatar.startsWith("a_") ? "gif" : "png";
+    return `https://cdn.discordapp.com/avatars/${user.id}/${userAvatar}.${ext}?size=128`;
+  }
+
+  // Fallback default avatar
+  const disc = user && user.discriminator ? Number(user.discriminator) % 5 : 0;
+  return `https://cdn.discordapp.com/embed/avatars/${disc}.png`;
+}
+
+function resolveDisplayName(member) {
+  // Priority: guild nickname -> global_name -> username
+  if (member.nick) return member.nick;
+  if (member.user && member.user.global_name) return member.user.global_name;
+  if (member.user && member.user.username) return member.user.username;
+  return "Unknown";
+}
+
+async function fetchGuildMembersFromDiscord() {
+  if (!oauthEnabled) return [];
 
   try {
     const res = await fetch(
-      `https://discord.com/api/v10/users/${userId}`,
+      `https://discord.com/api/v10/guilds/${process.env.GUILD_ID}/members?limit=1000`,
       { headers: { Authorization: `Bot ${process.env.TOKEN}` } }
     );
 
-    if (!res.ok) return null;
-    const user = await res.json();
-
-    if (!user.avatar) {
-      return `https://cdn.discordapp.com/embed/avatars/${Number(user.discriminator) % 5}.png`;
+    if (!res.ok) {
+      console.error("❌ Failed to fetch guild members:", await res.text());
+      return [];
     }
 
-    const ext = user.avatar.startsWith("a_") ? "gif" : "png";
-    return `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.${ext}?size=128`;
-  } catch {
-    return null;
+    const members = await res.json();
+    return members;
+  } catch (err) {
+    console.error("❌ Error fetching guild members:", err);
+    return [];
   }
+}
+
+async function syncGuildMembers() {
+  const members = await fetchGuildMembersFromDiscord();
+  if (!members.length) return [];
+
+  const mapped = members.map((m) => {
+    const user = m.user || {};
+    return {
+      id: user.id,
+      username: resolveDisplayName(m),
+      avatarUrl: buildAvatarUrl(user, m)
+    };
+  });
+
+  // Upsert into DB (id + username only)
+  try {
+    const values = mapped
+      .map(
+        (_, i) =>
+          `($${i * 2 + 1}, $${i * 2 + 2})`
+      )
+      .join(", ");
+
+    const params = mapped.flatMap((m) => [m.id, m.username]);
+
+    if (params.length) {
+      await db.query(
+        `
+        INSERT INTO agency_members (id, username)
+        VALUES ${values}
+        ON CONFLICT (id) DO UPDATE SET username = EXCLUDED.username
+        `,
+        params
+      );
+    }
+  } catch (err) {
+    console.error("❌ Failed to sync agency_members into DB:", err);
+  }
+
+  return mapped;
 }
 
 /* ============================
@@ -197,7 +266,9 @@ function buildBattleFilter(query) {
   let idx = 1;
 
   if (query.q) {
-    where.push(`(LOWER(hostname) LIKE $${idx} OR LOWER(opponent) LIKE $${idx})`);
+    where.push(
+      `(LOWER(hostname) LIKE $${idx} OR LOWER(opponent) LIKE $${idx})`
+    );
     params.push(`%${query.q.toLowerCase()}%`);
     idx++;
   }
@@ -231,64 +302,7 @@ function buildBattleFilter(query) {
 }
 
 /* ============================
-   DASHBOARD
-============================ */
-
-app.get("/", async (req, res) => {
-  try {
-    const { whereClause, params } = buildBattleFilter(req.query);
-
-    const battlesResult = await db.query(
-      `SELECT * FROM battles ${whereClause} ORDER BY date ASC, time ASC`,
-      params
-    );
-
-    const battles = battlesResult.rows;
-
-    // Fetch avatars for distinct hosts
-    const hostIds = [...new Set(battles.map(b => b.host).filter(Boolean))];
-    const avatarMap = {};
-
-    await Promise.all(
-      hostIds.map(async (id) => {
-        avatarMap[id] = await getDiscordAvatarUrl(id);
-      })
-    );
-
-    const battlesWithAvatars = battles.map(b => ({
-      ...b,
-      avatarUrl: avatarMap[b.host] || null
-    }));
-
-    const agencyMembers = await db.query(`
-      SELECT id, username
-      FROM agency_members
-      ORDER BY username ASC
-    `);
-
-    res.render("dashboard", {
-      battles: battlesWithAvatars,
-      agencyMembers: agencyMembers.rows,
-      user: req.user || null,
-      roleLevel: req.roleLevel || "guest",
-      filters: req.query || {}
-    });
-
-  } catch (err) {
-    console.error("❌ Dashboard load error:", err);
-
-    res.render("dashboard", {
-      battles: [],
-      agencyMembers: [],
-      user: req.user || null,
-      roleLevel: req.roleLevel || "guest",
-      filters: req.query || {}
-    });
-  }
-});
-
-/* ============================
-   CALENDAR (WITH STATUS HELPERS)
+   CALENDAR STATUS HELPER
 ============================ */
 
 function computeBattleStatus(battle) {
@@ -316,6 +330,64 @@ function computeBattleStatus(battle) {
   }
 }
 
+/* ============================
+   DASHBOARD
+============================ */
+
+app.get("/", async (req, res) => {
+  try {
+    // Sync guild members from Discord → agency_members + in‑memory list
+    const syncedMembers = await syncGuildMembers();
+    const memberMap = {};
+    syncedMembers.forEach((m) => {
+      if (m && m.id) memberMap[m.id] = m;
+    });
+
+    const { whereClause, params } = buildBattleFilter(req.query);
+
+    const battlesResult = await db.query(
+      `SELECT * FROM battles ${whereClause} ORDER BY date ASC, time ASC`,
+      params
+    );
+
+    const battles = battlesResult.rows.map((b) => {
+      const hostInfo = memberMap[b.host] || null;
+      return {
+        ...b,
+        hostDisplayName: hostInfo ? hostInfo.username : b.hostname,
+        avatarUrl: hostInfo ? hostInfo.avatarUrl : null
+      };
+    });
+
+    // Also read agency_members from DB for admin page / consistency
+    const agencyMembersResult = await db.query(
+      "SELECT id, username FROM agency_members ORDER BY username ASC"
+    );
+
+    res.render("dashboard", {
+      battles,
+      agencyMembers: agencyMembersResult.rows,
+      user: req.user || null,
+      roleLevel: req.roleLevel || "guest",
+      filters: req.query || {}
+    });
+  } catch (err) {
+    console.error("❌ Dashboard load error:", err);
+
+    res.render("dashboard", {
+      battles: [],
+      agencyMembers: [],
+      user: req.user || null,
+      roleLevel: req.roleLevel || "guest",
+      filters: req.query || {}
+    });
+  }
+});
+
+/* ============================
+   CALENDAR
+============================ */
+
 app.get("/calendar", async (req, res) => {
   const { whereClause, params } = buildBattleFilter(req.query);
 
@@ -324,7 +396,7 @@ app.get("/calendar", async (req, res) => {
     params
   );
 
-  const battles = battlesResult.rows.map(b => ({
+  const battles = battlesResult.rows.map((b) => ({
     ...b,
     status: computeBattleStatus(b)
   }));
@@ -456,7 +528,7 @@ app.post("/battle/:id/delete", async (req, res) => {
 });
 
 /* ============================
-   ADMIN TOOLS: AGENCY MEMBERS
+   ADMIN: AGENCY MEMBERS VIEW
 ============================ */
 
 app.get("/admin/members", async (req, res) => {
@@ -471,32 +543,6 @@ app.get("/admin/members", async (req, res) => {
     user: req.user || null,
     roleLevel: req.roleLevel || "guest"
   });
-});
-
-app.post("/admin/members/add", async (req, res) => {
-  if (!["admin", "owner"].includes(req.roleLevel)) return res.redirect("/");
-
-  const { id, username } = req.body;
-
-  await db.query(
-    `
-    INSERT INTO agency_members (id, username)
-    VALUES ($1, $2)
-    ON CONFLICT (id) DO UPDATE SET username = EXCLUDED.username
-    `,
-    [id, username]
-  );
-
-  res.redirect("/admin/members");
-});
-
-app.post("/admin/members/remove", async (req, res) => {
-  if (!["admin", "owner"].includes(req.roleLevel)) return res.redirect("/");
-
-  const { id } = req.body;
-  await db.query("DELETE FROM agency_members WHERE id = $1", [id]);
-
-  res.redirect("/admin/members");
 });
 
 /* ============================
