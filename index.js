@@ -4,10 +4,7 @@ const {
 Client,
 GatewayIntentBits,
 Events,
-EmbedBuilder,
-ActionRowBuilder,
-ButtonBuilder,
-ButtonStyle
+EmbedBuilder
 } = require("discord.js");
 
 const cron = require("node-cron");
@@ -17,12 +14,12 @@ const fetch = require("node-fetch");
 const client = new Client({
 intents: [
 GatewayIntentBits.Guilds,
-GatewayIntentBits.GuildMessages,
-GatewayIntentBits.MessageContent
+GatewayIntentBits.GuildMessages
 ]
 });
 
 const sentReminders = new Set();
+
 
 client.once("clientReady", () => {
 
@@ -30,8 +27,9 @@ console.log(`🔥 Battle Bot online as ${client.user.tag}`);
 
 });
 
+
 /*
-Post battle embed
+POST EMBED
 */
 async function postBattleNow(battle){
 
@@ -54,7 +52,6 @@ const embed = new EmbedBuilder()
 )
 
 .setColor("#ff6600")
-
 .setTimestamp();
 
 if(battle.livelink){
@@ -78,12 +75,17 @@ files: battle.posterdata
 
 }
 
+
+/*
+APPROVE / REJECT BUTTONS
+*/
 client.on(Events.InteractionCreate, async interaction => {
 
 if(!interaction.isButton()) return;
 
 const [action,id] =
 interaction.customId.split("_");
+
 
 if(action==="reject"){
 
@@ -99,7 +101,9 @@ ephemeral:true
 
 }
 
+
 if(action!=="approve") return;
+
 
 const result =
 await db.query(
@@ -111,24 +115,27 @@ if(!result.rows.length) return;
 
 const request=result.rows[0];
 
+
 await interaction.reply({
 content:"📤 Upload poster within 60 seconds",
 ephemeral:true
 });
 
+
 const collector =
 interaction.channel.createMessageCollector({
 
-filter:m=>
-m.author.id===interaction.user.id &&
-m.attachments.size>0,
+filter:m =>
+m.author.id === interaction.user.id &&
+m.attachments.size > 0,
 
 max:1,
 time:60000
 
 });
 
-collector.on("collect",async msg=>{
+
+collector.on("collect", async msg=>{
 
 const attachment=msg.attachments.first();
 
@@ -137,7 +144,17 @@ const response=await fetch(attachment.url);
 const buffer=
 Buffer.from(await response.arrayBuffer());
 
-const inserted=await db.query(
+
+const member =
+await interaction.guild.members.fetch(
+interaction.user.id
+);
+
+const displayName =
+member.displayName;
+
+
+const inserted = await db.query(
 
 `INSERT INTO battles
 (host,hostname,opponent,date,time,posterdata)
@@ -145,8 +162,8 @@ VALUES ($1,$2,$3,$4,$5,$6)
 RETURNING *`,
 
 [
-request.requester,
-request.requester,
+interaction.user.id,
+displayName,
 request.opponent,
 request.preferred_date,
 request.preferred_time,
@@ -155,12 +172,15 @@ buffer
 
 );
 
+
 await postBattleNow(inserted.rows[0]);
+
 
 await db.query(
 "DELETE FROM battle_requests WHERE id=$1",
 [id]
 );
+
 
 msg.reply("✅ Battle approved");
 
@@ -168,12 +188,17 @@ msg.reply("✅ Battle approved");
 
 });
 
+
+/*
+REMINDER SYSTEM
+*/
 cron.schedule("*/5 * * * *", async () => {
 
 const battles =
 await db.query("SELECT * FROM battles");
 
 const now=new Date();
+
 
 for(const battle of battles.rows){
 
@@ -182,12 +207,13 @@ const key=
 
 if(sentReminders.has(key)) continue;
 
-const diff=
+const diff =
 (new Date(`${battle.date} ${battle.time}`)-now)/60000;
+
 
 if(diff>29 && diff<31){
 
-const channel=
+const channel =
 await client.channels.fetch(
 process.env.REMINDER_CHANNEL_ID
 );
@@ -209,5 +235,6 @@ sentReminders.add(key);
 }
 
 });
+
 
 client.login(process.env.TOKEN);

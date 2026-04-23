@@ -24,35 +24,28 @@ app.use(session({
 
 const upload = multer({ storage: multer.memoryStorage() });
 
+
 /*
-Poster image route
+POSTER ROUTE
 */
 app.get("/poster/:id", async (req, res) => {
 
-  try {
+  const result = await pool.query(
+    "SELECT posterdata FROM battles WHERE id=$1",
+    [req.params.id]
+  );
 
-    const result = await pool.query(
-      "SELECT posterdata FROM battles WHERE id=$1",
-      [req.params.id]
-    );
+  if (!result.rows.length || !result.rows[0].posterdata)
+    return res.status(404).send("Poster not found");
 
-    if (!result.rows.length || !result.rows[0].posterdata)
-      return res.status(404).send("Poster not found");
-
-    res.set("Content-Type", "image/jpeg");
-    res.send(result.rows[0].posterdata);
-
-  } catch (err) {
-
-    console.error(err);
-    res.status(500).send("Poster error");
-
-  }
+  res.set("Content-Type", "image/jpeg");
+  res.send(result.rows[0].posterdata);
 
 });
 
+
 /*
-Dashboard
+DASHBOARD
 */
 app.get("/", async (req, res) => {
 
@@ -62,14 +55,15 @@ app.get("/", async (req, res) => {
 
   res.render("dashboard", {
     battles: battles.rows,
-    roleLevel: req.session?.roleLevel || "member",
+    roleLevel: req.session?.roleLevel || "owner",
     success: null
   });
 
 });
 
+
 /*
-Calendar
+CALENDAR
 */
 app.get("/calendar", async (req, res) => {
 
@@ -84,16 +78,11 @@ app.get("/calendar", async (req, res) => {
 
 });
 
+
 /*
-Create battle
+CREATE BATTLE
 */
 app.post("/create-battle", upload.single("poster"), async (req, res) => {
-
-  const roleLevel =
-    req.session?.roleLevel || "member";
-
-  if (!["admin", "owner"].includes(roleLevel))
-    return res.redirect("/");
 
   const {
     host,
@@ -134,8 +123,9 @@ app.post("/create-battle", upload.single("poster"), async (req, res) => {
 
 });
 
+
 /*
-Request form
+REQUEST FORM PAGE
 */
 app.get("/request", (req, res) => {
 
@@ -145,8 +135,9 @@ app.get("/request", (req, res) => {
 
 });
 
+
 /*
-Submit request
+SUBMIT REQUEST
 */
 app.post("/submit-request", async (req, res) => {
 
@@ -198,11 +189,10 @@ app.post("/submit-request", async (req, res) => {
 
   }
 
-  res.render("request", {
-    success: true
-  });
+  res.render("request", { success: true });
 
 });
+
 
 app.listen(process.env.PORT || 3000, () => {
   console.log("🔥 Dashboard running");
