@@ -2,24 +2,45 @@
 <html>
 <head>
 <title>Flame Force Dashboard</title>
-
 <script src="https://cdn.tailwindcss.com"></script>
-
 </head>
 
 <body class="bg-slate-950 text-white min-h-screen">
 
 <div class="max-w-7xl mx-auto p-6">
 
-<h1 class="text-3xl font-bold mb-6">
-🔥 Flame Force Battle Dashboard
+<!-- HEADER NAV -->
+
+<div class="flex justify-between items-center mb-8">
+
+<h1 class="text-3xl font-bold">
+🔥 Flame Force Dashboard
 </h1>
+
+<div class="flex gap-4">
+
+<a href="/" class="bg-orange-600 px-4 py-2 rounded-lg">
+Dashboard
+</a>
+
+<a href="/calendar" class="bg-slate-800 px-4 py-2 rounded-lg">
+Calendar
+</a>
+
+<a href="/request" class="bg-slate-800 px-4 py-2 rounded-lg">
+Request Battle
+</a>
+
+</div>
+
+</div>
 
 
 <!-- CREATE BATTLE PANEL -->
+
 <% if ((roleLevel || "member") === "owner" || (roleLevel || "member") === "admin") { %>
 
-<div class="bg-slate-900 p-6 rounded-2xl shadow-xl mb-8">
+<div class="bg-slate-900 p-6 rounded-2xl shadow-xl mb-10">
 
 <h2 class="text-xl font-semibold mb-4">
 Create Battle
@@ -32,53 +53,39 @@ enctype="multipart/form-data"
 class="grid grid-cols-2 gap-4"
 >
 
-<input
-name="host"
-placeholder="Host"
-required
-class="p-2 rounded bg-slate-800"
-/>
+<input name="host" required placeholder="Host"
+class="p-2 rounded bg-slate-800"/>
 
-<input
-name="opponent"
-placeholder="Opponent"
-required
-class="p-2 rounded bg-slate-800"
-/>
+<input name="opponent" required placeholder="Opponent"
+class="p-2 rounded bg-slate-800"/>
 
-<input
-type="date"
-name="date"
-required
-class="p-2 rounded bg-slate-800"
-/>
+<input type="date" name="date" required
+class="p-2 rounded bg-slate-800"/>
 
-<input
-type="time"
-name="time"
-required
-class="p-2 rounded bg-slate-800"
-/>
+<input type="time" name="time" required
+class="p-2 rounded bg-slate-800"/>
+
 
 <label class="flex gap-2 items-center">
-<input type="checkbox" name="managergifting" />
+<input type="checkbox" name="managergifting"/>
 Manager gifting allowed
 </label>
 
 <label class="flex gap-2 items-center">
-<input type="checkbox" name="adultonly" />
+<input type="checkbox" name="adultonly"/>
 18+
 </label>
 
 <label class="flex gap-2 items-center">
-<input type="checkbox" name="powerups" />
+<input type="checkbox" name="powerups"/>
 Power ups allowed
 </label>
 
 <label class="flex gap-2 items-center">
-<input type="checkbox" name="nohammers" />
+<input type="checkbox" name="nohammers"/>
 No hammers
 </label>
+
 
 <input
 type="file"
@@ -100,7 +107,7 @@ Create Battle
 <% } %>
 
 
-<!-- BATTLE LIST -->
+<!-- BATTLE GRID -->
 
 <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
 
@@ -110,24 +117,22 @@ Create Battle
 
 <% if (battle.posterdata) { %>
 
-<img
-src="/poster/<%= battle.id %>"
-class="w-full object-cover"
-/>
+<img src="/poster/<%= battle.id %>" class="w-full object-cover"/>
 
 <% } %>
 
 <div class="p-4">
 
 <h3 class="text-lg font-bold">
+
 <%= battle.hostname || battle.host %>
 vs
 <%= battle.opponent %>
+
 </h3>
 
 <p class="text-sm text-slate-400">
-📅 <%= battle.date %>
-⏰ <%= battle.time %>
+📅 <%= battle.date %> ⏰ <%= battle.time %>
 </p>
 
 
@@ -147,14 +152,15 @@ vs
 <p class="text-purple-400 text-sm">No hammers</p>
 <% } %>
 
+
 <% if (battle.livelink) { %>
 
-<a
-href="<%= battle.livelink %>"
+<a href="<%= battle.livelink %>"
 target="_blank"
-class="inline-block mt-3 bg-red-600 px-4 py-2 rounded-lg"
->
+class="inline-block mt-3 bg-red-600 px-4 py-2 rounded-lg">
+
 🔴 Watch Live
+
 </a>
 
 <% } %>

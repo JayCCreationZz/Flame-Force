@@ -1,21 +1,42 @@
 <!DOCTYPE html>
 <html>
 <head>
-
 <title>Battle Calendar</title>
-
 <script src="https://cdn.tailwindcss.com"></script>
-
 </head>
 
 <body class="bg-slate-950 text-white min-h-screen">
 
 <div class="max-w-6xl mx-auto p-6">
 
-<h1 class="text-3xl font-bold mb-6">
-📅 Flame Force Battle Calendar
+<!-- HEADER NAV -->
+
+<div class="flex justify-between items-center mb-8">
+
+<h1 class="text-3xl font-bold">
+📅 Battle Calendar
 </h1>
 
+<div class="flex gap-4">
+
+<a href="/" class="bg-slate-800 px-4 py-2 rounded-lg">
+Dashboard
+</a>
+
+<a href="/calendar" class="bg-orange-600 px-4 py-2 rounded-lg">
+Calendar
+</a>
+
+<a href="/request" class="bg-slate-800 px-4 py-2 rounded-lg">
+Request Battle
+</a>
+
+</div>
+
+</div>
+
+
+<!-- CALENDAR GRID -->
 
 <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
 
@@ -25,10 +46,7 @@
 
 <% if (battle.posterdata) { %>
 
-<img
-src="/poster/<%= battle.id %>"
-class="w-full object-cover"
-/>
+<img src="/poster/<%= battle.id %>" class="w-full object-cover"/>
 
 <% } %>
 
@@ -43,21 +61,18 @@ vs
 </h3>
 
 <p class="text-sm text-slate-400">
-
-📅 <%= battle.date %>
-⏰ <%= battle.time %>
-
+📅 <%= battle.date %> ⏰ <%= battle.time %>
 </p>
 
 
 <% if (battle.livelink) { %>
 
-<a
-href="<%= battle.livelink %>"
+<a href="<%= battle.livelink %>"
 target="_blank"
-class="inline-block mt-3 bg-red-600 px-4 py-2 rounded-lg"
->
+class="inline-block mt-3 bg-red-600 px-4 py-2 rounded-lg">
+
 🔴 Watch Live
+
 </a>
 
 <% } %>
