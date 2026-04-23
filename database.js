@@ -1,27 +1,13 @@
 const { Pool } = require("pg");
 
-/*
-Railway PostgreSQL connection
-*/
-
 const pool = new Pool({
 connectionString: process.env.DATABASE_URL,
-ssl: {
-rejectUnauthorized: false
-}
+ssl:{ rejectUnauthorized:false }
 });
 
-/*
-INITIALIZE DATABASE TABLES
-*/
+async function initDB(){
 
-async function initDB() {
-
-try {
-
-/*
-BATTLES TABLE
-*/
+try{
 
 await pool.query(`
 CREATE TABLE IF NOT EXISTS battles (
@@ -36,14 +22,9 @@ livelink TEXT,
 managergifting BOOLEAN DEFAULT false,
 adultonly BOOLEAN DEFAULT false,
 powerups BOOLEAN DEFAULT false,
-nohammers BOOLEAN DEFAULT false,
-created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+nohammers BOOLEAN DEFAULT false
 )
 `);
-
-/*
-BATTLE REQUESTS TABLE
-*/
 
 await pool.query(`
 CREATE TABLE IF NOT EXISTS battle_requests (
@@ -60,9 +41,9 @@ created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 
 console.log("✅ PostgreSQL connected & schema synced successfully");
 
-} catch (err) {
+}catch(err){
 
-console.error("❌ PostgreSQL init error:", err);
+console.error("❌ PostgreSQL init error:",err);
 
 }
 
