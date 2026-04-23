@@ -1,265 +1,197 @@
-<!DOCTYPE html>
-<html>
-<head>
-<title>Flame Force Dashboard</title>
-<script src="https://cdn.tailwindcss.com"></script>
+<form
+action="/create"
+method="POST"
+enctype="multipart/form-data"
+class="bg-slate-900 p-6 rounded-2xl shadow-xl space-y-5"
+>
 
-<style>
-
-body{
-background:linear-gradient(135deg,#020617,#0f172a);
-color:white;
-}
-
-/* animated logo glow */
-
-.logo{
-animation:flameGlow 2.2s infinite ease-in-out;
-}
-
-@keyframes flameGlow{
-0%{filter:drop-shadow(0 0 6px rgba(255,80,0,.4));}
-50%{
-filter:
-drop-shadow(0 0 28px rgba(255,80,0,.95))
-drop-shadow(0 0 48px rgba(255,40,0,.5));
-}
-100%{filter:drop-shadow(0 0 6px rgba(255,80,0,.4));}
-}
-
-.card{
-background:rgba(30,41,59,.7);
-backdrop-filter:blur(10px);
-border-radius:18px;
-border:1px solid rgba(255,80,0,.25);
-}
-
-.poster{
-border-radius:14px;
-max-height:200px;
-object-fit:cover;
-}
-
-.rule{
-font-size:12px;
-padding:4px 10px;
-border-radius:8px;
-background:#1e293b;
-display:inline-block;
-margin:2px;
-}
-
-</style>
-</head>
-
-<body>
-
-<div class="max-w-7xl mx-auto px-6 py-10">
-
-<!-- NAVBAR -->
-
-<div class="flex justify-between items-center mb-10">
-
-<div class="flex items-center gap-4">
-
-<img src="/logo.png" class="logo w-14">
-
-<h1 class="text-3xl font-bold">Flame Force Dashboard 🔥</h1>
-
-</div>
-
-<div class="flex gap-3">
-
-<% if(roleLevel === "owner" || roleLevel === "admin"){ %>
-<a href="/dashboard" class="bg-slate-700 px-5 py-2 rounded-xl">Dashboard</a>
-<% } %>
-
-<a href="/calendar" class="bg-orange-500 px-5 py-2 rounded-xl">Calendar 📅</a>
-
-<a href="/logout" class="bg-red-600 px-5 py-2 rounded-xl">Logout</a>
-
-</div>
-</div>
+<h2 class="text-xl font-bold text-orange-400">
+Create Battle
+</h2>
 
 
-<!-- CREATE BATTLE PANEL -->
+<!-- HOST DROPDOWN -->
 
-<% if(roleLevel === "owner" || roleLevel === "admin"){ %>
+<label class="block text-sm text-slate-300">
+Host Creator
+</label>
 
-<div class="card p-6 mb-10">
+<select
+name="host"
+required
+onchange="setHostName(this)"
+class="w-full px-4 py-2 rounded-xl bg-slate-800 border border-slate-600 text-white"
+>
 
-<h2 class="text-xl font-semibold mb-4">Create Battle ⚔️</h2>
-
-<form action="/create" method="POST" enctype="multipart/form-data" class="grid md:grid-cols-2 gap-4">
-
-<select name="host" required class="text-black p-2 rounded">
-
-<option value="">Select Host</option>
+<option value="">Select creator</option>
 
 <% agencyMembers.forEach(member=>{ %>
-<option value="<%= member.id %>"><%= member.name %></option>
+
+<option value="<%= member.id %>">
+<%= member.name %>
+</option>
+
 <% }) %>
 
 </select>
 
-<input type="text" name="opponent" placeholder="Opponent username" required class="text-black p-2 rounded">
 
-<input type="text" name="date" placeholder="DD/MM/YYYY" required class="text-black p-2 rounded">
-
-<input type="text" name="time" placeholder="HH:MM" required class="text-black p-2 rounded">
-
-<input type="file" name="poster" class="col-span-2">
-
-<input type="text" name="liveLink" placeholder="TikTok live link (optional)" class="text-black p-2 rounded col-span-2">
+<input
+type="hidden"
+name="hostName"
+id="hostNameField"
+/>
 
 
-<!-- RULE OPTIONS -->
 
-<div>
+<!-- OPPONENT FIELD -->
 
-<label>Manager Gifting</label>
+<label class="block text-sm text-slate-300">
+Opponent Creator
+</label>
 
-<select name="managerGifting" class="text-black p-2 rounded w-full">
+<input
+type="text"
+name="opponent"
+required
+placeholder="Enter opponent username"
+class="w-full px-4 py-2 rounded-xl bg-slate-800 border border-slate-600 text-white"
+/>
 
-<option value="true">Allowed</option>
-<option value="false">Disabled</option>
 
-</select>
 
-</div>
+<!-- DATE + TIME PICKERS -->
 
-<div>
+<div class="grid grid-cols-2 gap-4">
 
-<label>18+</label>
+<div class="relative">
 
-<select name="adultOnly" class="text-black p-2 rounded w-full">
+<label class="block mb-1 text-sm text-slate-300">
+Battle Date
+</label>
 
-<option value="false">Off</option>
-<option value="true">On</option>
+<span class="absolute left-3 top-9 text-slate-400">
+📅
+</span>
 
-</select>
-
-</div>
-
-<div>
-
-<label>Power Ups</label>
-
-<select name="powerUps" class="text-black p-2 rounded w-full">
-
-<option value="true">Allowed</option>
-<option value="false">Disabled</option>
-
-</select>
+<input
+type="date"
+name="date"
+required
+min="<%= new Date().toISOString().split('T')[0] %>"
+class="pl-9 w-full px-4 py-2 rounded-xl bg-slate-800 border border-slate-600 text-white"
+/>
 
 </div>
 
-<div>
 
-<label>No Hammers</label>
+<div class="relative">
 
-<select name="noHammers" class="text-black p-2 rounded w-full">
+<label class="block mb-1 text-sm text-slate-300">
+Battle Time
+</label>
 
-<option value="true">Enabled</option>
-<option value="false">Disabled</option>
+<span class="absolute left-3 top-9 text-slate-400">
+🕒
+</span>
 
-</select>
+<input
+type="time"
+name="time"
+required
+class="pl-9 w-full px-4 py-2 rounded-xl bg-slate-800 border border-slate-600 text-white"
+/>
+
+</div>
 
 </div>
 
-<button class="bg-orange-500 px-5 py-2 rounded col-span-2 mt-3">Create Battle 🚀</button>
-
-</form>
-
-</div>
-
-<% } %>
-
-
-<!-- BATTLE GRID -->
-
-<div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-
-<% battles.forEach(b=>{ %>
-
-<div class="card p-5">
-
-<img src="/poster/<%= b.id %>?t=<%= Date.now() %>" class="poster mb-4">
-
-
-<h3 class="text-lg text-orange-400 font-semibold">
-
-🔥 <%= b.hostName || b.host %> vs <%= b.opponent %>
-
-</h3>
-
-
-<p>📅 <%= b.date %></p>
-
-<p>⏰ <%= b.time %></p>
-
-
-<!-- RULE BADGES -->
-
-<div class="mt-2">
-
-<span class="rule"><%= b.managergifting ? "🎁 Gifting Allowed" : "🚫 No Manager Gifting" %></span>
-
-<span class="rule"><%= b.adultonly ? "🔞 18+" : "All Ages" %></span>
-
-<span class="rule"><%= b.powerups ? "⚡ Power Ups" : "No Power Ups" %></span>
-
-<span class="rule"><%= b.nohammers ? "🔨 No Hammers" : "Hammers Allowed" %></span>
-
-</div>
 
 
 <!-- LIVE LINK -->
 
-<% if(b.livelink){ %>
+<label class="block text-sm text-slate-300">
+TikTok Live Link (optional)
+</label>
 
-<a href="<%= b.livelink %>" target="_blank"
-class="inline-block mt-3 bg-purple-600 px-3 py-1 rounded">
-
-Watch Live 🎥
-
-</a>
-
-<% } %>
+<input
+type="text"
+name="liveLink"
+placeholder="https://tiktok.com/@creator/live"
+class="w-full px-4 py-2 rounded-xl bg-slate-800 border border-slate-600 text-white"
+/>
 
 
-<!-- ADMIN CONTROLS -->
 
-<% if(roleLevel === "owner" || roleLevel === "admin"){ %>
+<!-- POSTER UPLOAD -->
 
-<div class="flex gap-2 mt-4">
+<label class="block text-sm text-slate-300">
+Battle Poster
+</label>
 
-<form action="/replace-poster/<%= b.id %>" method="POST" enctype="multipart/form-data">
+<input
+type="file"
+name="poster"
+accept="image/*"
+required
+class="w-full px-4 py-2 rounded-xl bg-slate-800 border border-slate-600 text-white"
+/>
 
-<input type="file" name="poster" required>
 
-<button class="bg-yellow-500 px-2 py-1 rounded mt-1">Replace Poster</button>
+
+<!-- RULE TOGGLES -->
+
+<div class="grid grid-cols-2 gap-4 text-sm text-slate-300">
+
+<label>
+<input type="checkbox" name="managerGifting" value="true">
+Manager gifting allowed
+</label>
+
+<label>
+<input type="checkbox" name="adultOnly" value="true">
+18+ only
+</label>
+
+<label>
+<input type="checkbox" name="powerUps" value="true">
+Powerups allowed
+</label>
+
+<label>
+<input type="checkbox" name="noHammers" value="true">
+No hammers
+</label>
+
+</div>
+
+
+
+<!-- SUBMIT BUTTON -->
+
+<button
+type="submit"
+class="w-full py-3 rounded-xl bg-orange-500 hover:bg-orange-600 font-semibold"
+>
+
+Create Battle
+
+</button>
 
 </form>
 
 
-<form action="/delete/<%= b.id %>" method="POST">
 
-<button class="bg-red-600 px-3 py-1 rounded">Delete</button>
+<script>
 
-</form>
+function setHostName(select){
 
-</div>
+const selectedText =
+select.options[select.selectedIndex].text;
 
-<% } %>
+document.getElementById("hostNameField").value =
+selectedText;
 
-</div>
+}
 
-<% }) %>
-
-</div>
-
-</div>
-
-</body>
-</html>
+</script>

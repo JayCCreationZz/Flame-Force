@@ -3,355 +3,379 @@ require("dotenv").config();
 const {
 Client,
 GatewayIntentBits,
-AttachmentBuilder,
-EmbedBuilder
+Events,
+EmbedBuilder,
+ActionRowBuilder,
+ButtonBuilder,
+ButtonStyle
 } = require("discord.js");
 
 const cron = require("node-cron");
 const db = require("./database");
 
 const client = new Client({
-intents:[GatewayIntentBits.Guilds]
-});
 
+intents: [
+GatewayIntentBits.Guilds,
+GatewayIntentBits.GuildMessages,
+GatewayIntentBits.MessageContent
+]
+
+});
 
 /*
 BOT READY
 */
 
-client.once("clientReady", async()=>{
+client.once("ready", () => {
 
-console.log("🔥 Flame Force Battle System Online");
-
-try{
-
-const ch =
-await client.channels.fetch(
-process.env.REMINDER_CHANNEL_ID
+console.log(
+`🔥 Battle Bot online as ${client.user.tag}`
 );
-
-if(ch){
-
-await ch.send("✅ Reminder system connected");
-
-}
-
-}catch(err){
-
-console.log("Reminder channel test failed:",err.message);
-
-}
 
 });
 
-
 /*
-ROLE PINGS
-*/
-
-function getRoleMentions(guild){
-
-const roleNames=["Spark","Ember","Blaze"];
-
-return roleNames
-.map(name=>guild.roles.cache.find(r=>r.name===name))
-.filter(Boolean)
-.map(role=>`<@&${role.id}>`)
-.join(" ");
-
-}
-
-
-/*
-UK DATE/TIME HELPERS
-*/
-
-function getUKNow(){
-
-return new Date(
-new Date().toLocaleString(
-"en-GB",
-{timeZone:"Europe/London"}
-)
-);
-
-}
-
-function minutesFromTime(str){
-
-if(!str) return null;
-
-const parts=str.split(":");
-
-if(parts.length!==2) return null;
-
-return Number(parts[0])*60 + Number(parts[1]);
-
-}
-
-
-/*
-RULE BADGES
-*/
-
-function formatRules(battle){
-
-return [
-
-battle.managergifting
-? "🎁 Manager Gifting Allowed"
-: "🚫 Manager Gifting Disabled",
-
-battle.adultonly
-? "🔞 18+ Battle"
-: "🟢 All Ages",
-
-battle.powerups
-? "⚡ Power Ups Enabled"
-: "🚫 No Power Ups",
-
-battle.nohammers
-? "🔨 No Hammers"
-: "🟢 Hammers Allowed"
-
-].join("\n");
-
-}
-
-
-/*
-EMBED BUILDER
-*/
-
-function buildEmbed(battle,title){
-
-return new EmbedBuilder()
-
-.setColor("#ff4d00")
-
-.setTitle(title)
-
-.setDescription(
-`⚔ <@${battle.host}> vs **${battle.opponent}**`
-)
-
-.addFields(
-{ name:"📅 Date",value:battle.date,inline:true },
-{ name:"⏰ Time",value:battle.time,inline:true },
-{ name:"Battle Rules",value:formatRules(battle) }
-)
-
-.setFooter({
-text:"Flame Force Agency"
-});
-
-}
-
-
-/*
-SEND EMBED WITH POSTER
-*/
-
-async function sendEmbed(channel,battle,title){
-
-const embed=buildEmbed(battle,title);
-
-const payload={embeds:[embed]};
-
-if(battle.posterdata){
-
-const attachment=
-new AttachmentBuilder(
-Buffer.from(battle.posterdata),
-{name:"battle.jpg"}
-);
-
-embed.setImage("attachment://battle.jpg");
-
-payload.files=[attachment];
-
-}
-
-await channel.send(payload);
-
-}
-
-
-/*
-POST BATTLE IMMEDIATELY WHEN CREATED
+POST BATTLE EMBED
 */
 
 async function postBattleNow(battle){
 
 try{
 
-const channel=
+const channel =
 await client.channels.fetch(
 process.env.BATTLE_CHANNEL_ID
 );
 
-if(!channel){
+if(!channel) return;
 
-console.log("❌ Battle channel missing");
-return;
+const embed = new EmbedBuilder()
 
+.setTitle("🔥 Battle Scheduled")
+
+.addFields(
+
+{
+name:"Host",
+value:battle.hostname || battle.host,
+inline:true
+},
+
+{
+name:"Opponent",
+value:battle.opponent,
+inline:true
+},
+
+{
+name:"Date",
+value:battle.date,
+inline:true
+},
+
+{
+name:"Time",
+value:battle.time,
+inline:true
 }
 
-await sendEmbed(
-channel,
-battle,
-"⚔ New Battle Scheduled"
-);
+)
+
+.setColor("#ff6600")
+
+.setTimestamp();
+
+if(battle.livelink)
+embed.addFields({
+name:"Live Link",
+value:battle.livelink
+});
+
+await channel.send({
+
+embeds:[embed],
+
+files: battle.posterdata
+? [{ attachment:battle.posterdata, name:"poster.jpg" }]
+: []
+
+});
 
 console.log(
-"📢 Battle posted:",
-battle.host,
-"vs",
-battle.opponent
+`📢 Poster sent to Discord: ${battle.hostname || battle.host} vs ${battle.opponent}`
 );
 
 }catch(err){
 
-console.log("Battle post error:",err.message);
-
-}
-
-}
-
-
-/*
-REMINDER ENGINE
-*/
-
-cron.schedule("* * * * *",async()=>{
-
-try{
-
-const now=getUKNow();
-
-const today=now.toLocaleDateString("en-GB");
-
-const nowMinutes=
-now.getHours()*60 + now.getMinutes();
-
-const result=
-await db.query(
-"SELECT * FROM battles WHERE date=$1",
-[today]
+console.log(
+"Battle post error:",
+err.message
 );
 
-if(!result.rows.length) return;
+}
 
-const reminderChannel=
+}
+
+module.exports.postBattleNow = postBattleNow;
+
+/*
+SEND REQUEST EMBED WITH BUTTONS
+*/
+
+async function sendBattleRequestEmbed(request){
+
+const channel =
+await client.channels.fetch(
+process.env.REQUEST_CHANNEL_ID
+);
+
+if(!channel) return;
+
+const row =
+new ActionRowBuilder().addComponents(
+
+new ButtonBuilder()
+.setCustomId(`approve_${request.id}`)
+.setLabel("Approve Battle")
+.setStyle(ButtonStyle.Success),
+
+new ButtonBuilder()
+.setCustomId(`reject_${request.id}`)
+.setLabel("Reject Request")
+.setStyle(ButtonStyle.Danger)
+
+);
+
+await channel.send({
+
+embeds:[
+new EmbedBuilder()
+
+.setTitle("📩 New Battle Request")
+
+.addFields(
+
+{ name:"Agency", value:request.agency || "Unknown", inline:true },
+
+{ name:"Requester", value:request.requester || "Unknown", inline:true },
+
+{ name:"Opponent", value:request.opponent || "Unknown", inline:true },
+
+{ name:"Preferred Date", value:request.preferred_date || "Not set", inline:true },
+
+{ name:"Preferred Time", value:request.preferred_time || "Not set", inline:true },
+
+{ name:"Notes", value:request.notes || "None" }
+
+)
+
+.setColor("#ffaa00")
+
+.setTimestamp()
+
+],
+
+components:[row]
+
+});
+
+}
+
+module.exports.sendBattleRequestEmbed =
+sendBattleRequestEmbed;
+
+/*
+APPROVE / REJECT BUTTON HANDLER
+*/
+
+client.on(Events.InteractionCreate, async interaction => {
+
+if(!interaction.isButton()) return;
+
+const [action, requestId] =
+interaction.customId.split("_");
+
+if(action === "reject"){
+
+await db.query(
+"DELETE FROM battle_requests WHERE id=$1",
+[requestId]
+);
+
+return interaction.reply({
+
+content:"❌ Request rejected",
+
+ephemeral:true
+
+});
+
+}
+
+if(action !== "approve") return;
+
+/*
+FETCH REQUEST
+*/
+
+const result =
+await db.query(
+"SELECT * FROM battle_requests WHERE id=$1",
+[requestId]
+);
+
+if(!result.rows.length)
+return interaction.reply({
+
+content:"Request not found",
+
+ephemeral:true
+
+});
+
+const request = result.rows[0];
+
+await interaction.reply({
+
+content:
+"📤 Upload the battle poster image within 60 seconds",
+
+ephemeral:true
+
+});
+
+/*
+WAIT FOR POSTER UPLOAD
+*/
+
+const filter = msg =>
+msg.author.id === interaction.user.id &&
+msg.attachments.size > 0;
+
+const collector =
+interaction.channel.createMessageCollector({
+
+filter,
+max:1,
+time:60000
+
+});
+
+collector.on("collect", async msg => {
+
+const attachment =
+msg.attachments.first();
+
+const response =
+await fetch(attachment.url);
+
+const buffer =
+Buffer.from(await response.arrayBuffer());
+
+/*
+INSERT BATTLE
+*/
+
+const inserted =
+await db.query(
+
+`INSERT INTO battles
+(host, opponent, date, time, posterdata)
+VALUES ($1,$2,$3,$4,$5)
+RETURNING *`,
+
+[
+request.requester,
+request.opponent,
+request.preferred_date,
+request.preferred_time,
+buffer
+]
+
+);
+
+/*
+POST TO CHANNEL
+*/
+
+await postBattleNow(inserted.rows[0]);
+
+/*
+REMOVE REQUEST
+*/
+
+await db.query(
+"DELETE FROM battle_requests WHERE id=$1",
+[requestId]
+);
+
+await msg.reply(
+"✅ Battle approved and posted"
+);
+
+});
+
+collector.on("end", collected => {
+
+if(!collected.size){
+
+interaction.followUp({
+
+content:
+"❌ Poster upload timed out",
+
+ephemeral:true
+
+});
+
+}
+
+});
+
+});
+
+/*
+REMINDER SYSTEM
+*/
+
+cron.schedule("*/5 * * * *", async () => {
+
+const battles =
+await db.query(
+"SELECT * FROM battles"
+);
+
+const now = new Date();
+
+for(const battle of battles.rows){
+
+const battleTime =
+new Date(`${battle.date} ${battle.time}`);
+
+const diff =
+(battleTime - now) / 60000;
+
+if(diff > 29 && diff < 31){
+
+const channel =
 await client.channels.fetch(
 process.env.REMINDER_CHANNEL_ID
 );
 
-if(!reminderChannel){
+if(!channel) return;
 
-console.log("❌ Reminder channel missing");
-return;
+await channel.send(
 
-}
+`⏰ Reminder: ${battle.hostname || battle.host} vs ${battle.opponent} starts in 30 minutes!`
 
-const rolePing=
-getRoleMentions(reminderChannel.guild);
-
-
-for(const battle of result.rows){
-
-const battleMinutes=
-minutesFromTime(battle.time);
-
-if(battleMinutes===null) continue;
-
-const diff=battleMinutes-nowMinutes;
-
-
-/*
-30 MIN REMINDER
-*/
-
-if(diff===30 && !battle.reminder30){
-
-await reminderChannel.send(rolePing);
-
-await sendEmbed(
-reminderChannel,
-battle,
-"🔥 Battle Starting In 30 Minutes"
-);
-
-await db.query(
-"UPDATE battles SET reminder30=TRUE WHERE id=$1",
-[battle.id]
-);
-
-}
-
-
-/*
-10 MIN REMINDER
-*/
-
-if(diff===10 && !battle.reminder10){
-
-await reminderChannel.send(rolePing);
-
-await sendEmbed(
-reminderChannel,
-battle,
-"🔥 Final Call — Battle Starts Soon"
-);
-
-await db.query(
-"UPDATE battles SET reminder10=TRUE WHERE id=$1",
-[battle.id]
-);
-
-}
-
-
-/*
-LIVE ALERT
-*/
-
-if(diff===0 && !battle.live){
-
-await reminderChannel.send(rolePing);
-
-await sendEmbed(
-reminderChannel,
-battle,
-"🔥 Battle LIVE NOW"
-);
-
-await db.query(
-"UPDATE battles SET live=TRUE WHERE id=$1",
-[battle.id]
 );
 
 }
 
 }
 
-}catch(err){
-
-console.log("Reminder engine error:",err.message);
-
-}
-
-},{
-timezone:"Europe/London"
 });
-
-
-/*
-EXPORT FUNCTION FOR DASHBOARD CREATE ROUTE
-*/
-
-module.exports.postBattleNow=postBattleNow;
-
 
 /*
 LOGIN
