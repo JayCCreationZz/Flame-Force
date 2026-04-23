@@ -1,103 +1,70 @@
-require("dotenv").config();
-
 const { Pool } = require("pg");
 
+/*
+Railway PostgreSQL connection
+*/
+
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false
-  }
+connectionString: process.env.DATABASE_URL,
+ssl: {
+rejectUnauthorized: false
+}
 });
+
+/*
+INITIALIZE DATABASE TABLES
+*/
 
 async function initDB() {
 
-  try {
+try {
 
-    /*
-    CORE TABLE
-    */
+/*
+BATTLES TABLE
+*/
 
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS battles (
-        id SERIAL PRIMARY KEY,
-        host TEXT,
-        opponent TEXT,
-        date TEXT,
-        time TEXT,
-        liveLink TEXT
-      )
-    `);
+await pool.query(`
+CREATE TABLE IF NOT EXISTS battles (
+id SERIAL PRIMARY KEY,
+host TEXT,
+hostname TEXT,
+opponent TEXT,
+date TEXT,
+time TEXT,
+posterdata BYTEA,
+livelink TEXT,
+managergifting BOOLEAN DEFAULT false,
+adultonly BOOLEAN DEFAULT false,
+powerups BOOLEAN DEFAULT false,
+nohammers BOOLEAN DEFAULT false,
+created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)
+`);
 
+/*
+BATTLE REQUESTS TABLE
+*/
 
-    /*
-    POSTER STORAGE
-    */
+await pool.query(`
+CREATE TABLE IF NOT EXISTS battle_requests (
+id SERIAL PRIMARY KEY,
+requester TEXT,
+agency TEXT,
+opponent TEXT,
+preferred_date TEXT,
+preferred_time TEXT,
+notes TEXT,
+created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)
+`);
 
-    await pool.query(`
-      ALTER TABLE battles
-      ADD COLUMN IF NOT EXISTS posterData BYTEA
-    `);
+console.log("✅ PostgreSQL connected & schema synced successfully");
 
+} catch (err) {
 
-    /*
-    RULE FLAGS
-    */
+console.error("❌ PostgreSQL init error:", err);
 
-    await pool.query(`
-      ALTER TABLE battles
-      ADD COLUMN IF NOT EXISTS managerGifting BOOLEAN DEFAULT false
-    `);
-
-    await pool.query(`
-      ALTER TABLE battles
-      ADD COLUMN IF NOT EXISTS adultOnly BOOLEAN DEFAULT false
-    `);
-
-    await pool.query(`
-      ALTER TABLE battles
-      ADD COLUMN IF NOT EXISTS powerUps BOOLEAN DEFAULT true
-    `);
-
-    await pool.query(`
-      ALTER TABLE battles
-      ADD COLUMN IF NOT EXISTS noHammers BOOLEAN DEFAULT false
-    `);
-
-
-    /*
-    REMINDER FLAGS
-    */
-
-    await pool.query(`
-      ALTER TABLE battles
-      ADD COLUMN IF NOT EXISTS reminder30 BOOLEAN DEFAULT false
-    `);
-
-    await pool.query(`
-      ALTER TABLE battles
-      ADD COLUMN IF NOT EXISTS reminder10 BOOLEAN DEFAULT false
-    `);
-
-    await pool.query(`
-      ALTER TABLE battles
-      ADD COLUMN IF NOT EXISTS live BOOLEAN DEFAULT false
-    `);
-
-    await pool.query(`
-      ALTER TABLE battles
-      ADD COLUMN IF NOT EXISTS posted BOOLEAN DEFAULT false
-    `);
-
-
-    console.log("✅ PostgreSQL schema synced successfully");
-
-  }
-
-  catch (err) {
-
-    console.error("❌ PostgreSQL init error:", err);
-
-  }
+}
 
 }
 
