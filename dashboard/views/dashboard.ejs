@@ -1,26 +1,78 @@
-<form
-action="/create"
-method="POST"
-enctype="multipart/form-data"
-class="bg-slate-900 p-6 rounded-2xl shadow-xl space-y-5"
->
+<!DOCTYPE html>
+<html>
+<head>
 
-<h2 class="text-xl font-bold text-orange-400">
+<title>Agency Battle Dashboard</title>
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<script src="https://cdn.tailwindcss.com"></script>
+
+</head>
+
+<body class="bg-slate-950 text-white min-h-screen">
+
+<!-- HEADER -->
+
+<div class="flex items-center justify-between px-6 py-4 bg-slate-900 shadow-lg">
+
+<div class="flex items-center gap-4">
+
+<img
+src="/logo.png"
+class="h-12 animate-pulse"
+/>
+
+<h1 class="text-xl font-bold text-orange-400">
+Agency Battle Dashboard
+</h1>
+
+</div>
+
+<div class="flex gap-3">
+
+<a href="/dashboard"
+class="bg-slate-700 px-4 py-2 rounded-xl">
+Dashboard
+</a>
+
+<a href="/calendar"
+class="bg-orange-500 px-4 py-2 rounded-xl">
+Calendar
+</a>
+
+<a href="/logout"
+class="bg-red-600 px-4 py-2 rounded-xl">
+Logout
+</a>
+
+</div>
+
+</div>
+
+
+<div class="max-w-7xl mx-auto p-6 grid lg:grid-cols-3 gap-6">
+
+
+<!-- CREATE PANEL -->
+
+<% if(roleLevel === "owner" || roleLevel === "admin"){ %>
+
+<div class="bg-slate-900 p-6 rounded-2xl shadow-xl h-fit">
+
+<h2 class="text-lg font-bold text-orange-400 mb-4">
 Create Battle
 </h2>
 
+<form action="/create" method="POST" enctype="multipart/form-data" class="space-y-4">
 
-<!-- HOST DROPDOWN -->
-
-<label class="block text-sm text-slate-300">
-Host Creator
-</label>
+<label>Host Creator</label>
 
 <select
 name="host"
 required
 onchange="setHostName(this)"
-class="w-full px-4 py-2 rounded-xl bg-slate-800 border border-slate-600 text-white"
+class="w-full px-3 py-2 rounded-lg bg-slate-800"
 >
 
 <option value="">Select creator</option>
@@ -36,70 +88,44 @@ class="w-full px-4 py-2 rounded-xl bg-slate-800 border border-slate-600 text-whi
 </select>
 
 
-<input
-type="hidden"
-name="hostName"
-id="hostNameField"
-/>
+<input type="hidden" name="hostName" id="hostNameField">
 
 
-
-<!-- OPPONENT FIELD -->
-
-<label class="block text-sm text-slate-300">
-Opponent Creator
-</label>
+<label>Opponent</label>
 
 <input
 type="text"
 name="opponent"
 required
-placeholder="Enter opponent username"
-class="w-full px-4 py-2 rounded-xl bg-slate-800 border border-slate-600 text-white"
+class="w-full px-3 py-2 rounded-lg bg-slate-800"
 />
 
 
+<div class="grid grid-cols-2 gap-3">
 
-<!-- DATE + TIME PICKERS -->
+<div>
 
-<div class="grid grid-cols-2 gap-4">
-
-<div class="relative">
-
-<label class="block mb-1 text-sm text-slate-300">
-Battle Date
-</label>
-
-<span class="absolute left-3 top-9 text-slate-400">
-📅
-</span>
+<label>Date</label>
 
 <input
 type="date"
 name="date"
 required
-min="<%= new Date().toISOString().split('T')[0] %>"
-class="pl-9 w-full px-4 py-2 rounded-xl bg-slate-800 border border-slate-600 text-white"
+class="w-full px-3 py-2 rounded-lg bg-slate-800"
 />
 
 </div>
 
 
-<div class="relative">
+<div>
 
-<label class="block mb-1 text-sm text-slate-300">
-Battle Time
-</label>
-
-<span class="absolute left-3 top-9 text-slate-400">
-🕒
-</span>
+<label>Time</label>
 
 <input
 type="time"
 name="time"
 required
-class="pl-9 w-full px-4 py-2 rounded-xl bg-slate-800 border border-slate-600 text-white"
+class="w-full px-3 py-2 rounded-lg bg-slate-800"
 />
 
 </div>
@@ -107,55 +133,41 @@ class="pl-9 w-full px-4 py-2 rounded-xl bg-slate-800 border border-slate-600 tex
 </div>
 
 
-
-<!-- LIVE LINK -->
-
-<label class="block text-sm text-slate-300">
-TikTok Live Link (optional)
-</label>
+<label>Live Link</label>
 
 <input
 type="text"
 name="liveLink"
-placeholder="https://tiktok.com/@creator/live"
-class="w-full px-4 py-2 rounded-xl bg-slate-800 border border-slate-600 text-white"
+class="w-full px-3 py-2 rounded-lg bg-slate-800"
 />
 
 
-
-<!-- POSTER UPLOAD -->
-
-<label class="block text-sm text-slate-300">
-Battle Poster
-</label>
+<label>Poster</label>
 
 <input
 type="file"
 name="poster"
 accept="image/*"
 required
-class="w-full px-4 py-2 rounded-xl bg-slate-800 border border-slate-600 text-white"
+class="w-full"
 />
 
 
-
-<!-- RULE TOGGLES -->
-
-<div class="grid grid-cols-2 gap-4 text-sm text-slate-300">
+<div class="grid grid-cols-2 gap-2 text-sm">
 
 <label>
 <input type="checkbox" name="managerGifting" value="true">
-Manager gifting allowed
+Manager gifting
 </label>
 
 <label>
 <input type="checkbox" name="adultOnly" value="true">
-18+ only
+18+
 </label>
 
 <label>
 <input type="checkbox" name="powerUps" value="true">
-Powerups allowed
+Powerups
 </label>
 
 <label>
@@ -166,12 +178,9 @@ No hammers
 </div>
 
 
-
-<!-- SUBMIT BUTTON -->
-
 <button
 type="submit"
-class="w-full py-3 rounded-xl bg-orange-500 hover:bg-orange-600 font-semibold"
+class="w-full bg-orange-500 hover:bg-orange-600 py-2 rounded-lg"
 >
 
 Create Battle
@@ -180,6 +189,104 @@ Create Battle
 
 </form>
 
+</div>
+
+<% } %>
+
+
+<!-- BATTLES LIST -->
+
+<div class="lg:col-span-2 space-y-5">
+
+<% battles.forEach(battle=>{ %>
+
+<div class="bg-slate-900 rounded-2xl shadow-lg overflow-hidden">
+
+<div class="grid md:grid-cols-3 gap-4">
+
+<div>
+
+<img
+src="/poster/<%= battle.id %>"
+class="w-full h-full object-cover"
+/>
+
+</div>
+
+
+<div class="md:col-span-2 p-4 space-y-2">
+
+<h2 class="text-lg font-bold text-orange-400">
+
+<%= battle.hostName %>
+vs
+<%= battle.opponent %>
+
+</h2>
+
+
+<p>
+📅 <%= battle.date %> at <%= battle.time %>
+</p>
+
+
+<div class="flex flex-wrap gap-2 text-xs">
+
+<% if(battle.managergifting){ %>
+<span class="bg-blue-600 px-2 py-1 rounded">
+Manager gifting
+</span>
+<% } %>
+
+<% if(battle.adultonly){ %>
+<span class="bg-red-600 px-2 py-1 rounded">
+18+
+</span>
+<% } %>
+
+<% if(battle.powerups){ %>
+<span class="bg-green-600 px-2 py-1 rounded">
+Powerups
+</span>
+<% } %>
+
+<% if(battle.nohammers){ %>
+<span class="bg-yellow-600 px-2 py-1 rounded">
+No hammers
+</span>
+<% } %>
+
+</div>
+
+
+<% if(roleLevel === "owner" || roleLevel === "admin"){ %>
+
+<form action="/delete/<%= battle.id %>" method="POST">
+
+<button
+class="mt-3 bg-red-600 px-3 py-1 rounded"
+>
+
+Delete
+
+</button>
+
+</form>
+
+<% } %>
+
+
+</div>
+
+</div>
+
+</div>
+
+<% }) %>
+
+</div>
+
+</div>
 
 
 <script>
@@ -195,3 +302,6 @@ selectedText;
 }
 
 </script>
+
+</body>
+</html>
