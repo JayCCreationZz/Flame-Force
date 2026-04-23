@@ -26,9 +26,9 @@ const upload = multer({ storage: multer.memoryStorage() });
 
 /*
 Ensure request table exists at runtime
-(prevents Railway crash loops)
 */
 (async () => {
+
   try {
 
     await pool.query(`
@@ -51,6 +51,7 @@ Ensure request table exists at runtime
     console.error("❌ request table init failed:", err);
 
   }
+
 })();
 
 /*
@@ -58,39 +59,86 @@ Dashboard Home
 */
 app.get("/", async (req, res) => {
 
-  const battles = await pool.query(
-    "SELECT * FROM battles ORDER BY date ASC, time ASC"
-  );
+  try {
 
-  res.render("dashboard", {
-    battles: battles.rows,
-    success: null
-  });
+    const battles = await pool.query(
+      "SELECT * FROM battles ORDER BY date ASC, time ASC"
+    );
+
+    /*
+    Default role fallback prevents EJS crash
+    */
+
+    const roleLevel =
+      req.session?.roleLevel || "member";
+
+    res.render("dashboard", {
+      battles: battles.rows,
+      roleLevel,
+      success: null
+    });
+
+  } catch (err) {
+
+    console.error("Dashboard load error:", err);
+
+    res.render("dashboard", {
+      battles: [],
+      roleLevel: "member",
+      success: null
+    });
+
+  }
 
 });
 
 /*
-Calendar View (visible to all members)
+Calendar View
 */
 app.get("/calendar", async (req, res) => {
 
-  const battles = await pool.query(
-    "SELECT * FROM battles ORDER BY date ASC, time ASC"
-  );
+  try {
 
-  res.render("calendar", {
-    battles: battles.rows
-  });
+    const battles = await pool.query(
+      "SELECT * FROM battles ORDER BY date ASC, time ASC"
+    );
+
+    res.render("calendar", {
+      battles: battles.rows,
+      roleLevel: req.session?.roleLevel || "member"
+    });
+
+  } catch (err) {
+
+    console.error("Calendar error:", err);
+
+    res.render("calendar", {
+      battles: [],
+      roleLevel: "member"
+    });
+
+  }
 
 });
 
 /*
-Create Battle
-(Admin / Owner)
+Create Battle (Admin / Owner only)
 */
 app.post("/create-battle", upload.single("poster"), async (req, res) => {
 
   try {
+
+    const roleLevel =
+      req.session?.roleLevel || "member";
+
+    if (
+      roleLevel !== "admin" &&
+      roleLevel !== "owner"
+    ) {
+
+      return res.redirect("/");
+
+    }
 
     const {
       host,
@@ -103,7 +151,8 @@ app.post("/create-battle", upload.single("poster"), async (req, res) => {
       nohammers
     } = req.body;
 
-    const poster = req.file ? req.file.buffer : null;
+    const poster =
+      req.file ? req.file.buffer : null;
 
     await pool.query(
       `
@@ -137,7 +186,7 @@ app.post("/create-battle", upload.single("poster"), async (req, res) => {
 });
 
 /*
-Battle Request Form Page
+Battle Request Page
 */
 app.get("/request", (req, res) => {
 
@@ -148,7 +197,7 @@ app.get("/request", (req, res) => {
 });
 
 /*
-Submit Battle Request
+Submit Request
 */
 app.post("/submit-request", async (req, res) => {
 
@@ -181,29 +230,30 @@ app.post("/submit-request", async (req, res) => {
     );
 
     /*
-    Optional webhook alert
+    Optional Discord webhook alert
     */
 
     if (process.env.REQUEST_WEBHOOK_URL) {
 
-      await axios.post(process.env.REQUEST_WEBHOOK_URL, {
-
-        embeds: [
-          {
-            title: "🔥 New Battle Request",
-            fields: [
-              { name: "Requester", value: requester },
-              { name: "Agency", value: agency },
-              { name: "Opponent", value: opponent },
-              { name: "Preferred Date", value: preferred_date },
-              { name: "Preferred Time", value: preferred_time },
-              { name: "Notes", value: notes || "None" }
-            ],
-            color: 16753920
-          }
-        ]
-
-      });
+      await axios.post(
+        process.env.REQUEST_WEBHOOK_URL,
+        {
+          embeds: [
+            {
+              title: "🔥 New Battle Request",
+              fields: [
+                { name: "Requester", value: requester },
+                { name: "Agency", value: agency },
+                { name: "Opponent", value: opponent },
+                { name: "Preferred Date", value: preferred_date },
+                { name: "Preferred Time", value: preferred_time },
+                { name: "Notes", value: notes || "None" }
+              ],
+              color: 16753920
+            }
+          ]
+        }
+      );
 
     }
 
