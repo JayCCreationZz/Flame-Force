@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<title>Battle Request | Flame Force</title>
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+
+body{
+font-family:Arial;
+background:#0f172a;
+color:white;
+padding:40px;
+}
+
+.container{
+max-width:600px;
+margin:auto;
+background:#1e293b;
+padding:30px;
+border-radius:12px;
+}
+
+h1{
+text-align:center;
+margin-bottom:25px;
+}
+
+input, textarea{
+width:100%;
+padding:12px;
+margin-top:8px;
+margin-bottom:18px;
+border-radius:8px;
+border:none;
+background:#334155;
+color:white;
+}
+
+button{
+width:100%;
+padding:14px;
+border:none;
+border-radius:10px;
+background:#f97316;
+color:white;
+font-size:16px;
+cursor:pointer;
+}
+
+button:hover{
+background:#ea580c;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>🔥 Battle Request Form</h1>
+
+<form method="POST" action="/request">
+
+<label>Your Name</label>
+<input name="requester" required>
+
+<label>Your Agency</label>
+<input name="agency" required>
+
+<label>Opponent Creator</label>
+<input name="opponent" required>
+
+<label>Preferred Date</label>
+<input type="date" name="date">
+
+<label>Preferred Time</label>
+<input type="time" name="time">
+
+<label>Notes</label>
+<textarea name="notes"></textarea>
+
+<button type="submit">
+Submit Battle Request
+</button>
+
+</form>
+
+</div>
+
+</body>
+</html>
