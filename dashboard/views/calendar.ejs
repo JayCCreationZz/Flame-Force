@@ -1,179 +1,76 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Flame Force Calendar</title>
-  <script src="https://cdn.tailwindcss.com"></script>
 
-  <style>
-    body{
-      background:linear-gradient(135deg,#020617,#0f172a);
-      color:white;
-    }
+<title>Battle Calendar</title>
 
-    .logo{
-      animation:pulseGlow 2.2s infinite ease-in-out;
-    }
+<script src="https://cdn.tailwindcss.com"></script>
 
-    @keyframes pulseGlow{
-      0%{filter:drop-shadow(0 0 10px rgba(255,80,0,.5));}
-      50%{
-        filter:
-        drop-shadow(0 0 28px rgba(255,80,0,.95))
-        drop-shadow(0 0 50px rgba(255,40,0,.5));
-      }
-      100%{filter:drop-shadow(0 0 10px rgba(255,80,0,.5));}
-    }
-
-    .card{
-      background:rgba(30,41,59,.75);
-      backdrop-filter:blur(12px);
-      border-radius:18px;
-      border:1px solid rgba(255,80,0,.25);
-    }
-
-    .poster{
-      border-radius:12px;
-      max-height:180px;
-      object-fit:cover;
-    }
-  </style>
 </head>
 
-<body>
+<body class="bg-slate-950 text-white min-h-screen">
 
-<div class="max-w-7xl mx-auto px-6 py-10">
+<div class="max-w-6xl mx-auto p-6">
 
-<!-- NAVBAR -->
-<div class="flex justify-between items-center mb-10">
-
-  <div class="flex items-center gap-4">
-    <img src="/logo.png" class="logo w-14">
-    <h1 class="text-3xl font-bold">Battle Calendar</h1>
-  </div>
-
-  <div class="flex gap-3">
-
-    <% if(roleLevel === "owner" || roleLevel === "admin"){ %>
-      <a href="/dashboard" class="bg-slate-700 px-5 py-2 rounded-xl">Dashboard 🔥</a>
-    <% } %>
-
-    <a href="/calendar" class="bg-orange-500 px-5 py-2 rounded-xl">Calendar 📅</a>
-
-    <a href="/logout" class="bg-red-600 px-5 py-2 rounded-xl">Logout</a>
-
-  </div>
-</div>
+<h1 class="text-3xl font-bold mb-6">
+📅 Flame Force Battle Calendar
+</h1>
 
 
-<%
-/* -----------------------------
-   DATE HELPERS
------------------------------- */
+<div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
 
-// Convert DD/MM/YYYY → JS Date
-function parseDate(d) {
-  const [day, month, year] = d.split("/");
-  return new Date(`${year}-${month}-${day}`);
-}
+<% battles.forEach(battle => { %>
 
-// Today
-const now = new Date();
-const todayStr = now.toLocaleDateString("en-GB");
+<div class="bg-slate-900 rounded-2xl shadow-xl overflow-hidden">
 
-// Tomorrow
-const tomorrow = new Date(now);
-tomorrow.setDate(now.getDate() + 1);
-const tomorrowStr = tomorrow.toLocaleDateString("en-GB");
+<% if (battle.posterdata) { %>
 
-// 7 days ahead
-const weekAhead = new Date(now);
-weekAhead.setDate(now.getDate() + 7);
+<img
+src="/poster/<%= battle.id %>"
+class="w-full object-cover"
+/>
 
-/* -----------------------------
-   GROUP BATTLES
------------------------------- */
-
-const todayBattles = [];
-const tomorrowBattles = [];
-const weekBattles = [];
-
-battles.forEach(b => {
-  const d = parseDate(b.date);
-
-  if (b.date === todayStr) {
-    todayBattles.push(b);
-  } else if (b.date === tomorrowStr) {
-    tomorrowBattles.push(b);
-  } else if (d > now && d <= weekAhead) {
-    weekBattles.push(b);
-  }
-});
-%>
-
-
-<!-- TODAY -->
-<h2 class="text-2xl font-bold text-orange-400 mb-4">🔥 Battles Today</h2>
-
-<div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
-<% if (todayBattles.length === 0) { %>
-  <p class="text-gray-400">No battles today.</p>
-<% } else { %>
-  <% todayBattles.forEach(b => { %>
-    <div class="card p-5">
-      <img src="/poster/<%= b.id %>?t=<%= Date.now() %>" class="poster mb-4">
-      <h3 class="text-lg text-orange-400 font-semibold">
-        🔥 <%= b.hostName || b.host %> vs <%= b.opponent %>
-      </h3>
-      <p>📅 <%= b.date %></p>
-      <p class="mb-2">⏰ <%= b.time %></p>
-    </div>
-  <% }) %>
 <% } %>
-</div>
+
+<div class="p-4">
+
+<h3 class="text-lg font-bold">
+
+<%= battle.hostname || battle.host %>
+vs
+<%= battle.opponent %>
+
+</h3>
+
+<p class="text-sm text-slate-400">
+
+📅 <%= battle.date %>
+⏰ <%= battle.time %>
+
+</p>
 
 
-<!-- TOMORROW -->
-<h2 class="text-2xl font-bold text-orange-400 mb-4">⚔ Battles Tomorrow</h2>
+<% if (battle.livelink) { %>
 
-<div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
-<% if (tomorrowBattles.length === 0) { %>
-  <p class="text-gray-400">No battles tomorrow.</p>
-<% } else { %>
-  <% tomorrowBattles.forEach(b => { %>
-    <div class="card p-5">
-      <img src="/poster/<%= b.id %>?t=<%= Date.now() %>" class="poster mb-4">
-      <h3 class="text-lg text-orange-400 font-semibold">
-        🔥 <%= b.hostName || b.host %> vs <%= b.opponent %>
-      </h3>
-      <p>📅 <%= b.date %></p>
-      <p class="mb-2">⏰ <%= b.time %></p>
-    </div>
-  <% }) %>
+<a
+href="<%= battle.livelink %>"
+target="_blank"
+class="inline-block mt-3 bg-red-600 px-4 py-2 rounded-lg"
+>
+🔴 Watch Live
+</a>
+
 <% } %>
-</div>
-
-
-<!-- THIS WEEK -->
-<h2 class="text-2xl font-bold text-orange-400 mb-4">📅 Battles This Week</h2>
-
-<div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
-<% if (weekBattles.length === 0) { %>
-  <p class="text-gray-400">No battles this week.</p>
-<% } else { %>
-  <% weekBattles.forEach(b => { %>
-    <div class="card p-5">
-      <img src="/poster/<%= b.id %>?t=<%= Date.now() %>" class="poster mb-4">
-      <h3 class="text-lg text-orange-400 font-semibold">
-        🔥 <%= b.hostName || b.host %> vs <%= b.opponent %>
-      </h3>
-      <p>📅 <%= b.date %></p>
-      <p class="mb-2">⏰ <%= b.time %></p>
-    </div>
-  <% }) %>
-<% } %>
-</div>
-
 
 </div>
+
+</div>
+
+<% }) %>
+
+</div>
+
+</div>
+
 </body>
 </html>

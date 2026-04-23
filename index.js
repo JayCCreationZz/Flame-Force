@@ -24,77 +24,38 @@ GatewayIntentBits.MessageContent
 
 const sentReminders = new Set();
 
-/*
-BOT READY
-*/
-
 client.once("clientReady", () => {
 
-console.log(
-`🔥 Battle Bot online as ${client.user.tag}`
-);
+console.log(`🔥 Battle Bot online as ${client.user.tag}`);
 
 });
 
 /*
-POST BATTLE EMBED
+Post battle embed
 */
-
 async function postBattleNow(battle){
-
-try{
 
 const channel =
 await client.channels.fetch(
 process.env.BATTLE_CHANNEL_ID
 );
 
-if(!channel){
-
-console.log("❌ Missing BATTLE_CHANNEL_ID");
-return;
-
-}
+if(!channel) return;
 
 const embed = new EmbedBuilder()
 
 .setTitle("🔥 Battle Scheduled")
 
 .addFields(
-
-{
-name:"Host",
-value:battle.hostname || battle.host || "Unknown",
-inline:true
-},
-
-{
-name:"Opponent",
-value:battle.opponent || "Unknown",
-inline:true
-},
-
-{
-name:"Date",
-value:battle.date,
-inline:true
-},
-
-{
-name:"Time",
-value:battle.time,
-inline:true
-}
-
+{ name:"Host", value:battle.hostname || battle.host },
+{ name:"Opponent", value:battle.opponent },
+{ name:"Date", value:battle.date },
+{ name:"Time", value:battle.time }
 )
 
 .setColor("#ff6600")
 
 .setTimestamp();
-
-/*
-Optional LIVE link
-*/
 
 if(battle.livelink){
 
@@ -104,10 +65,6 @@ value:battle.livelink
 });
 
 }
-
-/*
-Send message
-*/
 
 await channel.send({
 
@@ -119,197 +76,71 @@ files: battle.posterdata
 
 });
 
-console.log(
-`📢 Battle posted: ${
-battle.hostname || battle.host
-} vs ${battle.opponent}`
-);
-
-}catch(err){
-
-console.log("❌ Battle post error:", err.message);
-
 }
-
-}
-
-module.exports.postBattleNow = postBattleNow;
-
-/*
-SEND REQUEST EMBED WITH APPROVE / REJECT BUTTONS
-*/
-
-async function sendBattleRequestEmbed(request){
-
-const channel =
-await client.channels.fetch(
-process.env.REQUEST_CHANNEL_ID
-);
-
-if(!channel){
-
-console.log("❌ REQUEST_CHANNEL_ID missing");
-return;
-
-}
-
-const row =
-new ActionRowBuilder().addComponents(
-
-new ButtonBuilder()
-.setCustomId(`approve_${request.id}`)
-.setLabel("Approve")
-.setStyle(ButtonStyle.Success),
-
-new ButtonBuilder()
-.setCustomId(`reject_${request.id}`)
-.setLabel("Reject")
-.setStyle(ButtonStyle.Danger)
-
-);
-
-await channel.send({
-
-embeds:[
-new EmbedBuilder()
-
-.setTitle("📩 New Battle Request")
-
-.addFields(
-
-{ name:"Agency", value:request.agency || "Unknown", inline:true },
-
-{ name:"Requester", value:request.requester || "Unknown", inline:true },
-
-{ name:"Opponent", value:request.opponent || "Unknown", inline:true },
-
-{ name:"Preferred Date", value:request.preferred_date || "Not set", inline:true },
-
-{ name:"Preferred Time", value:request.preferred_time || "Not set", inline:true },
-
-{ name:"Notes", value:request.notes || "None" }
-
-)
-
-.setColor("#ffaa00")
-
-.setTimestamp()
-
-],
-
-components:[row]
-
-});
-
-console.log("✅ Request embed sent with buttons");
-
-}
-
-module.exports.sendBattleRequestEmbed = sendBattleRequestEmbed;
-
-/*
-APPROVE / REJECT BUTTON HANDLER
-*/
 
 client.on(Events.InteractionCreate, async interaction => {
 
 if(!interaction.isButton()) return;
 
-const [action, requestId] =
+const [action,id] =
 interaction.customId.split("_");
 
-/*
-REJECT REQUEST
-*/
-
-if(action === "reject"){
+if(action==="reject"){
 
 await db.query(
 "DELETE FROM battle_requests WHERE id=$1",
-[requestId]
+[id]
 );
 
 return interaction.reply({
-
 content:"❌ Request rejected",
-
 ephemeral:true
-
 });
 
 }
 
-/*
-APPROVE REQUEST
-*/
-
-if(action !== "approve") return;
+if(action!=="approve") return;
 
 const result =
 await db.query(
 "SELECT * FROM battle_requests WHERE id=$1",
-[requestId]
+[id]
 );
 
-if(!result.rows.length){
+if(!result.rows.length) return;
 
-return interaction.reply({
-
-content:"❌ Request not found",
-
-ephemeral:true
-
-});
-
-}
-
-const request = result.rows[0];
+const request=result.rows[0];
 
 await interaction.reply({
-
-content:
-"📤 Upload the battle poster image within 60 seconds",
-
+content:"📤 Upload poster within 60 seconds",
 ephemeral:true
-
 });
-
-/*
-WAIT FOR POSTER
-*/
 
 const collector =
 interaction.channel.createMessageCollector({
 
-filter: msg =>
-msg.author.id === interaction.user.id &&
-msg.attachments.size > 0,
+filter:m=>
+m.author.id===interaction.user.id &&
+m.attachments.size>0,
 
 max:1,
 time:60000
 
 });
 
-collector.on("collect", async msg => {
+collector.on("collect",async msg=>{
 
-const attachment =
-msg.attachments.first();
+const attachment=msg.attachments.first();
 
-const response =
-await fetch(attachment.url);
+const response=await fetch(attachment.url);
 
-const buffer =
+const buffer=
 Buffer.from(await response.arrayBuffer());
 
-/*
-INSERT APPROVED BATTLE
-*/
-
-const inserted =
-await db.query(
+const inserted=await db.query(
 
 `INSERT INTO battles
-(host, hostname, opponent, date, time, posterdata)
+(host,hostname,opponent,date,time,posterdata)
 VALUES ($1,$2,$3,$4,$5,$6)
 RETURNING *`,
 
@@ -324,78 +155,39 @@ buffer
 
 );
 
-/*
-POST TO DISCORD
-*/
-
 await postBattleNow(inserted.rows[0]);
-
-/*
-DELETE REQUEST ENTRY
-*/
 
 await db.query(
 "DELETE FROM battle_requests WHERE id=$1",
-[requestId]
+[id]
 );
 
-await msg.reply(
-"✅ Battle approved and posted"
-);
-
-});
-
-/*
-TIMEOUT FAILSAFE
-*/
-
-collector.on("end", collected => {
-
-if(!collected.size){
-
-interaction.followUp({
-
-content:"❌ Poster upload timed out",
-
-ephemeral:true
-
-});
-
-}
+msg.reply("✅ Battle approved");
 
 });
 
 });
-
-/*
-30 MINUTE REMINDER SYSTEM
-*/
 
 cron.schedule("*/5 * * * *", async () => {
-
-try{
 
 const battles =
 await db.query("SELECT * FROM battles");
 
-const now = new Date();
+const now=new Date();
 
 for(const battle of battles.rows){
 
-const key =
+const key=
 `${battle.id}_${battle.date}_${battle.time}`;
 
 if(sentReminders.has(key)) continue;
 
-const battleTime =
-new Date(`${battle.date} ${battle.time}`);
+const diff=
+(new Date(`${battle.date} ${battle.time}`)-now)/60000;
 
-const diff =
-(battleTime - now) / 60000;
+if(diff>29 && diff<31){
 
-if(diff > 29 && diff < 31){
-
-const channel =
+const channel=
 await client.channels.fetch(
 process.env.REMINDER_CHANNEL_ID
 );
@@ -403,35 +195,19 @@ process.env.REMINDER_CHANNEL_ID
 if(channel){
 
 await channel.send(
-
 `⏰ Reminder: ${
 battle.hostname || battle.host
-} vs ${battle.opponent} starts in 30 minutes!`
-
+} vs ${battle.opponent} starts in 30 minutes`
 );
 
 sentReminders.add(key);
 
-console.log(
-`⏰ Reminder sent for battle ${battle.id}`
-);
-
 }
 
 }
-
-}
-
-}catch(err){
-
-console.log("❌ Reminder error:", err.message);
 
 }
 
 });
-
-/*
-LOGIN
-*/
 
 client.login(process.env.TOKEN);
