@@ -246,7 +246,8 @@ app.get("/", async (req, res) => {
       battles: battlesResult.rows,
       agencyMembers: agencyMembersResult.rows,
       user: req.user || null,
-      roleLevel: req.roleLevel || "guest"
+      roleLevel: req.roleLevel || "guest",
+      filters: req.query || {}
     });
   } catch (err) {
     console.error("❌ Dashboard load error:", err);
@@ -255,7 +256,8 @@ app.get("/", async (req, res) => {
       battles: [],
       agencyMembers: [],
       user: req.user || null,
-      roleLevel: req.roleLevel || "guest"
+      roleLevel: req.roleLevel || "guest",
+      filters: req.query || {}
     });
   }
 });
