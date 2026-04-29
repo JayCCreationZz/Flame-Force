@@ -26,14 +26,15 @@ app.use(express.static(path.join(__dirname, "public")));
 app.set("trust proxy", 1);
 
 /* ============================
-   SESSION CONFIG (FIXED)
+   SESSION CONFIG (PRODUCTION SAFE)
 ============================ */
 
 app.use(
   session({
     store: new pgSession({
       pool: db,
-      tableName: "session"
+      tableName: "session",
+      pruneSessionInterval: 60 * 15
     }),
     secret: process.env.SESSION_SECRET || "flame_force_dev_secret",
     resave: false,
@@ -163,7 +164,7 @@ app.use(async (req, _res, next) => {
 const upload = multer({ storage: multer.memoryStorage() });
 
 /* ============================
-   MEMBER SYNC
+   MEMBER SYNC HELPERS
 ============================ */
 
 function resolveDisplayName(member) {
