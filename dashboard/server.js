@@ -1,3 +1,4 @@
+```js
 require("dotenv").config();
 
 const express = require("express");
@@ -5,6 +6,7 @@ const session = require("express-session");
 const passport = require("passport");
 const DiscordStrategy = require("passport-discord").Strategy;
 const path = require("path");
+const multer = require("multer");
 
 const {
   Client,
@@ -15,8 +17,12 @@ const db = require("../database");
 
 const app = express();
 
+const upload = multer({
+  storage: multer.memoryStorage()
+});
+
 /* ============================
-   DISCORD CLIENT
+DISCORD CLIENT
 ============================ */
 
 const discordClient = new Client({
@@ -27,18 +33,15 @@ const discordClient = new Client({
 });
 
 discordClient.login(process.env.BOT_TOKEN)
-  .then(() => {
-    console.log("✅ Dashboard Discord client connected");
-  })
-  .catch(err => {
-    console.error(
-      "❌ Dashboard Discord login failed:",
-      err
-    );
-  });
+.then(() => {
+  console.log("✅ Dashboard Discord client connected");
+})
+.catch(err => {
+  console.error("❌ Dashboard Discord login failed:", err);
+});
 
 /* ============================
-   EXPRESS SETUP
+EXPRESS
 ============================ */
 
 app.use(express.urlencoded({ extended: true }));
@@ -49,10 +52,8 @@ app.use(
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
-
     cookie: {
-      maxAge:
-        1000 * 60 * 60 * 24 * 7
+      maxAge: 1000 * 60 * 60 * 24 * 7
     }
   })
 );
@@ -70,37 +71,24 @@ app.set(
 app.use(express.static("public"));
 
 /* ============================
-   PASSPORT
+PASSPORT
 ============================ */
 
-passport.serializeUser(
-  (user, done) => {
-    done(null, user);
-  }
-);
+passport.serializeUser((user, done) => {
+  done(null, user);
+});
 
-passport.deserializeUser(
-  (obj, done) => {
-    done(null, obj);
-  }
-);
+passport.deserializeUser((obj, done) => {
+  done(null, obj);
+});
 
 passport.use(
   new DiscordStrategy(
     {
-      clientID:
-        process.env.DISCORD_CLIENT_ID,
-
-      clientSecret:
-        process.env.DISCORD_CLIENT_SECRET,
-
-      callbackURL:
-        process.env.DISCORD_CALLBACK_URL,
-
-      scope: [
-        "identify",
-        "guilds"
-      ]
+      clientID: process.env.DISCORD_CLIENT_ID,
+      clientSecret: process.env.DISCORD_CLIENT_SECRET,
+      callbackURL: process.env.DISCORD_CALLBACK_URL,
+      scope: ["identify", "guilds"]
     },
 
     (
@@ -119,14 +107,10 @@ passport.use(
 );
 
 /* ============================
-   AUTH MIDDLEWARE
+AUTH
 ============================ */
 
-function checkAuth(
-  req,
-  res,
-  next
-) {
+function checkAuth(req, res, next) {
 
   if (req.isAuthenticated()) {
     return next();
@@ -137,11 +121,101 @@ function checkAuth(
 }
 
 /* ============================
-   HOME DASHBOARD
+ROLE CHECK
+============================ */
+
+function getRoleLevel(user) {
+
+  return "owner";
+
+}
+
+/* ============================
+HOME
+============================ */
+
+app.get("/", checkAuth, async (req, res) => {
+
+  try {
+
+    const result = await db.query(`
+      SELECT *
+      FROM battles
+      ORDER BY id DESC
+    `);
+
+    const battles = result.rows;
+
+    let guild = null;
+
+    try {
+
+      guild =
+        await discordClient.guilds.fetch(
+          process.env.GUILD_ID
+        );
+
+    } catch (err) {
+
+      console.error("Guild fetch failed:", err);
+
+    }
+
+    for (const battle of battles) {
+
+      try {
+
+        if (guild) {
+
+          const member =
+            await guild.members.fetch(
+              battle.host
+            );
+
+          battle.hostdisplayname =
+            member.displayName;
+
+          battle.avatarUrl =
+            member.user.displayAvatarURL();
+
+        }
+
+      } catch {
+
+        battle.hostdisplayname =
+          battle.host;
+
+      }
+
+    }
+
+    res.render("dashboard", {
+      user: req.user,
+      battles,
+      roleLevel: getRoleLevel(req.user)
+    });
+
+  } catch (err) {
+
+    console.error(
+      "❌ Dashboard load error:",
+      err
+    );
+
+    res.status(500).send(
+      "Dashboard failed"
+    );
+
+  }
+
+});
+
+/* ============================
+CALENDAR
 ============================ */
 
 app.get(
-  "/",
+  "/calendar",
   checkAuth,
 
   async (req, res) => {
@@ -152,56 +226,31 @@ app.get(
         await db.query(`
           SELECT *
           FROM battles
-          ORDER BY id DESC
+          ORDER BY date ASC
         `);
 
       const battles =
         result.rows;
 
-      const guild =
-        await discordClient.guilds.fetch(
-          process.env.GUILD_ID
-        );
-
-      for (const battle of battles) {
-
-        try {
-
-          const member =
-            await guild.members.fetch(
-              battle.host
-            );
-
-          battle.hostdisplayname =
-            member.displayName;
-
-        } catch {
-
-          battle.hostdisplayname =
-            battle.host;
-
-        }
-
-      }
-
       res.render(
-        "dashboard",
+        "calendar",
         {
           user: req.user,
           battles,
-          roleLevel: "owner"
+          roleLevel:
+            getRoleLevel(req.user)
         }
       );
 
     } catch (err) {
 
       console.error(
-        "❌ Dashboard load error:",
+        "Calendar error:",
         err
       );
 
-      res.status(500).send(
-        "Dashboard failed to load"
+      res.send(
+        "Calendar failed"
       );
 
     }
@@ -210,12 +259,101 @@ app.get(
 );
 
 /* ============================
-   CREATE BATTLE
+REQUEST PAGE
+============================ */
+
+app.get(
+  "/request",
+
+  (req, res) => {
+
+    res.render(
+      "request",
+      {
+        user: req.user,
+        success: false
+      }
+    );
+
+  }
+);
+
+/* ============================
+SUBMIT REQUEST
+============================ */
+
+app.post(
+  "/request",
+
+  async (req, res) => {
+
+    try {
+
+      const {
+        requester,
+        agency,
+        preferred_date,
+        preferred_time,
+        notes
+      } = req.body;
+
+      await db.query(
+
+        `
+        INSERT INTO battle_requests
+        (
+          requester,
+          agency,
+          preferred_date,
+          preferred_time,
+          notes
+        )
+
+        VALUES ($1,$2,$3,$4,$5)
+        `,
+
+        [
+          requester,
+          agency,
+          preferred_date,
+          preferred_time,
+          notes
+        ]
+
+      );
+
+      res.render(
+        "request",
+        {
+          success: true,
+          user: req.user
+        }
+      );
+
+    } catch (err) {
+
+      console.error(
+        "Request submit error:",
+        err
+      );
+
+      res.send(
+        "Request failed"
+      );
+
+    }
+
+  }
+);
+
+/* ============================
+CREATE BATTLE
 ============================ */
 
 app.post(
   "/battle/create",
   checkAuth,
+  upload.single("poster"),
 
   async (req, res) => {
 
@@ -226,7 +364,11 @@ app.post(
         opponent,
         date,
         time,
-        livelink
+        livelink,
+        managergifting,
+        adultonly,
+        powerups,
+        nohammers
       } = req.body;
 
       await db.query(
@@ -238,16 +380,17 @@ app.post(
           opponent,
           date,
           time,
-          livelink
+          posterdata,
+          livelink,
+          managergifting,
+          adultonly,
+          powerups,
+          nohammers
         )
 
         VALUES
         (
-          $1,
-          $2,
-          $3,
-          $4,
-          $5
+          $1,$2,$3,$4,$5,$6,$7,$8,$9,$10
         )
         `,
 
@@ -256,81 +399,16 @@ app.post(
           opponent,
           date,
           time,
-          livelink
-        ]
-
-      );
-
-      console.log(
-        `✅ Battle created: ${host} vs ${opponent}`
-      );
-
-      res.redirect("/");
-
-    } catch (err) {
-
-      console.error(
-        "❌ Create battle error:",
-        err
-      );
-
-      res.status(500).send(
-        "Failed to create battle"
-      );
-
-    }
-
-  }
-);
-
-/* ============================
-   EDIT BATTLE
-============================ */
-
-app.post(
-  "/battle/:id/edit",
-  checkAuth,
-
-  async (req, res) => {
-
-    try {
-
-      const {
-        host,
-        opponent,
-        date,
-        time,
-        livelink
-      } = req.body;
-
-      await db.query(
-
-        `
-        UPDATE battles
-
-        SET
-          host = $1,
-          opponent = $2,
-          date = $3,
-          time = $4,
-          livelink = $5
-
-        WHERE id = $6
-        `,
-
-        [
-          host,
-          opponent,
-          date,
-          time,
+          req.file
+            ? req.file.buffer
+            : null,
           livelink,
-          req.params.id
+          !!managergifting,
+          !!adultonly,
+          !!powerups,
+          !!nohammers
         ]
 
-      );
-
-      console.log(
-        `✏️ Updated battle ${req.params.id}`
       );
 
       res.redirect("/");
@@ -338,12 +416,12 @@ app.post(
     } catch (err) {
 
       console.error(
-        "❌ Edit battle error:",
+        "Create battle error:",
         err
       );
 
-      res.status(500).send(
-        "Failed to edit battle"
+      res.send(
+        "Battle creation failed"
       );
 
     }
@@ -352,7 +430,7 @@ app.post(
 );
 
 /* ============================
-   DELETE BATTLE
+DELETE BATTLE
 ============================ */
 
 app.post(
@@ -371,20 +449,16 @@ app.post(
         [req.params.id]
       );
 
-      console.log(
-        `🗑 Deleted battle ${req.params.id}`
-      );
-
       res.redirect("/");
 
     } catch (err) {
 
       console.error(
-        "❌ Delete battle error:",
+        "Delete error:",
         err
       );
 
-      res.status(500).send(
+      res.send(
         "Delete failed"
       );
 
@@ -394,15 +468,12 @@ app.post(
 );
 
 /* ============================
-   DISCORD AUTH
+DISCORD AUTH
 ============================ */
 
 app.get(
   "/auth/discord",
-
-  passport.authenticate(
-    "discord"
-  )
+  passport.authenticate("discord")
 );
 
 app.get(
@@ -416,40 +487,30 @@ app.get(
   ),
 
   (req, res) => {
-
-    console.log(
-      `✅ ${req.user.username} logged in`
-    );
-
     res.redirect("/");
-
   }
 );
 
 /* ============================
-   LOGOUT
+LOGOUT
 ============================ */
 
-app.get(
-  "/logout",
+app.get("/logout", (req, res) => {
 
-  (req, res) => {
+  req.logout(() => {
 
-    req.logout(() => {
+    req.session.destroy(() => {
 
-      req.session.destroy(() => {
-
-        res.redirect("/");
-
-      });
+      res.redirect("/");
 
     });
 
-  }
-);
+  });
+
+});
 
 /* ============================
-   POSTER IMAGE ROUTE
+POSTER ROUTE
 ============================ */
 
 app.get(
@@ -461,13 +522,11 @@ app.get(
 
       const result =
         await db.query(
-
           `
           SELECT posterdata
           FROM battles
           WHERE id = $1
           `,
-
           [req.params.id]
         );
 
@@ -478,9 +537,7 @@ app.get(
 
         return res
           .status(404)
-          .send(
-            "No poster found"
-          );
+          .send("No poster");
 
       }
 
@@ -490,19 +547,18 @@ app.get(
       );
 
       res.send(
-        result.rows[0]
-          .posterdata
+        result.rows[0].posterdata
       );
 
     } catch (err) {
 
       console.error(
-        "❌ Failed loading poster:",
+        "Poster error:",
         err
       );
 
-      res.status(500).send(
-        "Poster load failed"
+      res.send(
+        "Poster failed"
       );
 
     }
@@ -511,38 +567,29 @@ app.get(
 );
 
 /* ============================
-   HEALTH CHECK
+HEALTH
 ============================ */
 
-app.get(
-  "/health",
+app.get("/health", (req, res) => {
 
-  (req, res) => {
+  res.json({
+    online: true
+  });
 
-    res.json({
-      status: "online",
-      dashboard: true,
-      timestamp: new Date()
-    });
-
-  }
-);
+});
 
 /* ============================
-   START SERVER
+START SERVER
 ============================ */
 
 const PORT =
   process.env.PORT || 3000;
 
-app.listen(
-  PORT,
+app.listen(PORT, () => {
 
-  () => {
+  console.log(
+    `🔥 Flame Force Dashboard running on port ${PORT}`
+  );
 
-    console.log(
-      `🔥 Flame Force Dashboard running on port ${PORT}`
-    );
-
-  }
-);
+});
+```

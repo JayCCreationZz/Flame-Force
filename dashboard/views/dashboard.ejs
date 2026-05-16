@@ -1,3 +1,4 @@
+```ejs
 <!DOCTYPE html>
 <html lang="en">
 
@@ -22,38 +23,217 @@
 
   <!-- HEADER -->
 
-  <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
+  <div class="flex flex-col gap-6 mb-8">
 
-    <div>
+    <!-- TITLE -->
 
-      <h1 class="text-4xl font-bold">
-        🔥 Flame Force Dashboard
-      </h1>
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
 
-      <p class="opacity-70 mt-2">
-        Logged in as
-        <%= user.username %>
-      </p>
+      <div>
+
+        <h1 class="text-4xl font-bold">
+          🔥 Flame Force Dashboard
+        </h1>
+
+        <p class="opacity-70 mt-2">
+          Logged in as
+          <%= user.username %>
+        </p>
+
+      </div>
+
+      <div class="flex gap-3">
+
+        <a
+          href="/calendar"
+          class="bg-indigo-600 hover:bg-indigo-700 px-5 py-3 rounded-xl"
+        >
+          📅 Calendar
+        </a>
+
+        <a
+          href="/logout"
+          class="bg-red-600 hover:bg-red-700 px-5 py-3 rounded-xl"
+        >
+          Logout
+        </a>
+
+      </div>
 
     </div>
 
-    <div class="flex gap-3">
+    <!-- CREATE BATTLE PANEL -->
 
-      <a
-        href="/battle/new"
-        class="bg-indigo-600 hover:bg-indigo-700 px-5 py-3 rounded-xl"
-      >
+    <% if (
+      roleLevel === "admin" ||
+      roleLevel === "owner"
+    ) { %>
+
+    <div class="bg-slate-800 border border-orange-500 rounded-2xl p-6 shadow-xl">
+
+      <h2 class="text-2xl font-bold text-orange-400 mb-5">
         ➕ Create Battle
-      </a>
+      </h2>
 
-      <a
-        href="/logout"
-        class="bg-red-600 hover:bg-red-700 px-5 py-3 rounded-xl"
+      <form
+        action="/battle/create"
+        method="POST"
+        enctype="multipart/form-data"
+        class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"
       >
-        Logout
-      </a>
+
+        <!-- HOST -->
+
+        <div>
+
+          <label class="block mb-2 text-sm opacity-80">
+            Host Discord ID
+          </label>
+
+          <input
+            type="text"
+            name="host"
+            required
+            placeholder="Discord User ID"
+            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3"
+          />
+
+        </div>
+
+        <!-- OPPONENT -->
+
+        <div>
+
+          <label class="block mb-2 text-sm opacity-80">
+            Opponent Name
+          </label>
+
+          <input
+            type="text"
+            name="opponent"
+            required
+            placeholder="Opponent"
+            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3"
+          />
+
+        </div>
+
+        <!-- DATE -->
+
+        <div>
+
+          <label class="block mb-2 text-sm opacity-80">
+            Date
+          </label>
+
+          <input
+            type="date"
+            name="date"
+            required
+            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3"
+          />
+
+        </div>
+
+        <!-- TIME -->
+
+        <div>
+
+          <label class="block mb-2 text-sm opacity-80">
+            Time
+          </label>
+
+          <input
+            type="time"
+            name="time"
+            required
+            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3"
+          />
+
+        </div>
+
+        <!-- LIVE LINK -->
+
+        <div>
+
+          <label class="block mb-2 text-sm opacity-80">
+            TikTok Live Link
+          </label>
+
+          <input
+            type="text"
+            name="livelink"
+            placeholder="https://..."
+            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3"
+          />
+
+        </div>
+
+        <!-- POSTER -->
+
+        <div>
+
+          <label class="block mb-2 text-sm opacity-80">
+            Battle Poster
+          </label>
+
+          <input
+            type="file"
+            name="poster"
+            accept="image/*"
+            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3"
+          />
+
+        </div>
+
+        <!-- TOGGLES -->
+
+        <div class="flex flex-col gap-3">
+
+          <label class="flex items-center gap-2">
+            <input type="checkbox" name="managergifting">
+            🎁 Manager Gifting
+          </label>
+
+          <label class="flex items-center gap-2">
+            <input type="checkbox" name="adultonly">
+            🔞 18+
+          </label>
+
+        </div>
+
+        <div class="flex flex-col gap-3">
+
+          <label class="flex items-center gap-2">
+            <input type="checkbox" name="powerups">
+            ⚡ Powerups
+          </label>
+
+          <label class="flex items-center gap-2">
+            <input type="checkbox" name="nohammers">
+            🔨 No Hammers
+          </label>
+
+        </div>
+
+        <!-- SUBMIT -->
+
+        <div class="flex items-end">
+
+          <button
+            type="submit"
+            class="w-full bg-orange-500 hover:bg-orange-600 text-black font-bold px-5 py-3 rounded-xl transition"
+          >
+            CREATE BATTLE
+          </button>
+
+        </div>
+
+      </form>
 
     </div>
+
+    <% } %>
 
   </div>
 
@@ -179,16 +359,12 @@
 
       <div class="flex gap-3 mt-5">
 
-        <!-- EDIT -->
-
         <a
           href="/battle/<%= b.id %>/edit"
           class="bg-yellow-500 hover:bg-yellow-600 text-black px-4 py-2 rounded-lg"
         >
           ✏ Edit
         </a>
-
-        <!-- DELETE -->
 
         <form
           action="/battle/<%= b.id %>/delete"
@@ -230,3 +406,4 @@
 </body>
 
 </html>
+```
