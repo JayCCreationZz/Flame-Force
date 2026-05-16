@@ -1,4 +1,3 @@
-```ejs
 <!DOCTYPE html>
 <html lang="en">
 
@@ -31,29 +30,38 @@
 
       <div>
 
-        <h1 class="text-4xl font-bold">
+        <h1 class="text-4xl font-bold text-orange-400">
           🔥 Flame Force Dashboard
         </h1>
 
         <p class="opacity-70 mt-2">
           Logged in as
-          <%= user.username %>
+          <span class="font-semibold">
+            <%= user.username %>
+          </span>
         </p>
 
       </div>
 
-      <div class="flex gap-3">
+      <div class="flex flex-wrap gap-3">
 
         <a
           href="/calendar"
-          class="bg-indigo-600 hover:bg-indigo-700 px-5 py-3 rounded-xl"
+          class="bg-indigo-600 hover:bg-indigo-700 px-5 py-3 rounded-xl transition"
         >
           📅 Calendar
         </a>
 
         <a
+          href="/request"
+          class="bg-orange-500 hover:bg-orange-600 text-black px-5 py-3 rounded-xl transition font-bold"
+        >
+          📨 Requests
+        </a>
+
+        <a
           href="/logout"
-          class="bg-red-600 hover:bg-red-700 px-5 py-3 rounded-xl"
+          class="bg-red-600 hover:bg-red-700 px-5 py-3 rounded-xl transition"
         >
           Logout
         </a>
@@ -87,16 +95,28 @@
         <div>
 
           <label class="block mb-2 text-sm opacity-80">
-            Host Discord ID
+            Flame Force Host
           </label>
 
-          <input
-            type="text"
+          <select
             name="host"
             required
-            placeholder="Discord User ID"
             class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3"
-          />
+          >
+
+            <option value="">
+              Select Host
+            </option>
+
+            <% guildMembers.forEach(member => { %>
+
+              <option value="<%= member.id %>">
+                <%= member.name %>
+              </option>
+
+            <% }) %>
+
+          </select>
 
         </div>
 
@@ -188,7 +208,7 @@
 
         <!-- TOGGLES -->
 
-        <div class="flex flex-col gap-3">
+        <div class="flex flex-col gap-3 justify-center">
 
           <label class="flex items-center gap-2">
             <input type="checkbox" name="managergifting">
@@ -202,7 +222,7 @@
 
         </div>
 
-        <div class="flex flex-col gap-3">
+        <div class="flex flex-col gap-3 justify-center">
 
           <label class="flex items-center gap-2">
             <input type="checkbox" name="powerups">
@@ -271,16 +291,34 @@
 
     <div class="p-5">
 
-      <h2 class="text-2xl font-bold mb-3">
+      <!-- HOST INFO -->
 
-        ⚔
-        <%= b.hostdisplayname || b.hostname || b.host %>
+      <div class="flex items-center gap-3 mb-4">
 
-        vs
+        <% if (b.avatarUrl) { %>
 
-        <%= b.opponent || "Unknown" %>
+        <img
+          src="<%= b.avatarUrl %>"
+          class="w-12 h-12 rounded-full border-2 border-orange-500"
+        />
 
-      </h2>
+        <% } %>
+
+        <div>
+
+          <h2 class="text-xl font-bold">
+
+            <%= b.hostdisplayname || b.host %>
+
+          </h2>
+
+          <p class="text-sm opacity-60">
+            vs <%= b.opponent || "Unknown" %>
+          </p>
+
+        </div>
+
+      </div>
 
       <!-- DATE/TIME -->
 
@@ -343,7 +381,7 @@
       <a
         href="<%= b.livelink %>"
         target="_blank"
-        class="mt-5 inline-block bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-lg"
+        class="mt-5 inline-block bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-lg transition"
       >
         🔗 Watch Battle
       </a>
@@ -361,7 +399,7 @@
 
         <a
           href="/battle/<%= b.id %>/edit"
-          class="bg-yellow-500 hover:bg-yellow-600 text-black px-4 py-2 rounded-lg"
+          class="bg-yellow-500 hover:bg-yellow-600 text-black px-4 py-2 rounded-lg transition"
         >
           ✏ Edit
         </a>
@@ -372,7 +410,7 @@
         >
 
           <button
-            class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg"
+            class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg transition"
           >
             🗑 Delete
           </button>
@@ -406,4 +444,3 @@
 </body>
 
 </html>
-```
