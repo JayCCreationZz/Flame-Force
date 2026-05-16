@@ -512,10 +512,45 @@ app.post(
       } = req.body;
 
       /*
+      VALIDATE DATE
+      */
+
+      const dateRegex =
+        /^\d{2}\/\d{2}\/\d{4}$/;
+
+      /*
+      VALIDATE TIME
+      */
+
+      const timeRegex =
+        /^\d{2}:\d{2}$/;
+
+      if (
+        !dateRegex.test(date)
+      ) {
+
+        return res.send(
+          "Invalid date format"
+        );
+
+      }
+
+      if (
+        !timeRegex.test(time)
+      ) {
+
+        return res.send(
+          "Invalid time format"
+        );
+
+      }
+
+      /*
       GET HOST DISPLAY NAME
       */
 
-      let hostname = host;
+      let hostname =
+        host;
 
       try {
 
@@ -524,15 +559,42 @@ app.post(
             process.env.GUILD_ID
           );
 
-        const member =
-          await guild.members.fetch(
+        /*
+        CACHE FIRST
+        */
+
+        let member =
+          guild.members.cache.get(
             host
           );
+
+        /*
+        FETCH ONLY IF NEEDED
+        */
+
+        if (!member) {
+
+          try {
+
+            member =
+              await guild.members.fetch(
+                host
+              );
+
+          } catch {
+
+            member = null;
+
+          }
+
+        }
 
         if (member) {
 
           hostname =
+
             member.displayName ||
+
             member.user.username;
 
         }
@@ -540,7 +602,9 @@ app.post(
       } catch(err) {
 
         console.log(
+
           "⚠ Failed to fetch host display name"
+
         );
 
       }
@@ -560,6 +624,7 @@ app.post(
             opponent,
             date,
             time,
+            posted,
             posterdata,
             livelink,
             managergifting,
@@ -570,7 +635,7 @@ app.post(
 
           VALUES
           (
-            $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11
+            $1,$2,$3,$4,$5,TRUE,$6,$7,$8,$9,$10,$11
           )
 
           RETURNING *
@@ -607,7 +672,7 @@ app.post(
         );
 
       /*
-      INSTANTLY POST TO DISCORD
+      INSTANT POST TO DISCORD
       */
 
       try {
@@ -705,7 +770,9 @@ app.post(
           });
 
           console.log(
+
             "✅ Battle instantly posted to Discord"
+
           );
 
         } else {
@@ -719,8 +786,10 @@ app.post(
       } catch(err) {
 
         console.error(
-          "❌ Discord instant post failed:",
+
+          "❌ Instant Discord post failed:",
           err
+
         );
 
       }
@@ -731,7 +800,7 @@ app.post(
 
       res.redirect("/");
 
-    } catch (err) {
+    } catch(err) {
 
       console.error(
         "Create battle error:",
@@ -745,6 +814,7 @@ app.post(
     }
 
   }
+
 );
 /* ============================
 DELETE BATTLE

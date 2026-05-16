@@ -5,8 +5,7 @@ require("dotenv").config();
 const {
   Client,
   GatewayIntentBits,
-  Events,
-  EmbedBuilder
+  Events
 } = require("discord.js");
 
 const cron = require("node-cron");
@@ -14,127 +13,36 @@ const db = require("./database");
 const fetch = require("node-fetch");
 
 const client = new Client({
+
   intents: [
+
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.GuildMembers
+
   ]
+
 });
 
-const sentReminders = new Set();
+const sentReminders =
+  new Set();
 
 /*
 BOT READY
 */
 
-client.once("clientReady", () => {
-
-  console.log(
-    `🔥 Battle Bot online as ${client.user.tag}`
-  );
-
-});
-
-/*
-POST BATTLE EMBED
-*/
-
-async function postBattleNow(battle) {
-
-  try {
-
-    const channel =
-      await client.channels.fetch(
-        process.env.BATTLE_CHANNEL_ID
-      );
-
-    if (!channel) {
-
-      console.log(
-        "❌ Battle channel not found"
-      );
-
-      return;
-
-    }
-
-    const embed = new EmbedBuilder()
-
-      .setTitle("🔥 Battle Scheduled")
-
-      .addFields(
-        {
-          name: "Host",
-          value:
-            battle.hostname ||
-            battle.host ||
-            "Unknown"
-        },
-        {
-          name: "Opponent",
-          value:
-            battle.opponent ||
-            "Unknown"
-        },
-        {
-          name: "Date",
-          value:
-            battle.date ||
-            "Unknown"
-        },
-        {
-          name: "Time",
-          value:
-            battle.time ||
-            "Unknown"
-        }
-      )
-
-      .setColor("#ff6600")
-      .setTimestamp();
-
-    if (battle.livelink) {
-
-      embed.addFields({
-        name: "🔴 LIVE",
-        value: battle.livelink
-      });
-
-    }
-
-    await channel.send({
-
-      embeds: [embed],
-
-      files: battle.posterdata
-        ? [
-            {
-              attachment:
-                battle.posterdata,
-              name: "poster.jpg"
-            }
-          ]
-        : []
-
-    });
+client.once(
+  "clientReady",
+  () => {
 
     console.log(
-      `✅ Posted battle: ${
-        battle.hostname ||
-        battle.host
-      } vs ${battle.opponent}`
-    );
 
-  } catch(err) {
+      `🔥 Battle Bot online as ${client.user.tag}`
 
-    console.error(
-      "❌ Failed to post battle:",
-      err
     );
 
   }
-
-}
+);
 
 /*
 APPROVE / REJECT REQUESTS
@@ -142,9 +50,12 @@ APPROVE / REJECT REQUESTS
 
 client.on(
   Events.InteractionCreate,
+
   async interaction => {
 
-    if (!interaction.isButton()) return;
+    if (
+      !interaction.isButton()
+    ) return;
 
     const [action, id] =
       interaction.customId.split("_");
@@ -181,8 +92,9 @@ client.on(
     APPROVE
     */
 
-    if (action !== "approve")
-      return;
+    if (
+      action !== "approve"
+    ) return;
 
     const result =
       await db.query(
@@ -197,8 +109,9 @@ client.on(
 
       );
 
-    if (!result.rows.length)
-      return;
+    if (
+      !result.rows.length
+    ) return;
 
     const request =
       result.rows[0];
@@ -230,6 +143,7 @@ client.on(
 
     collector.on(
       "collect",
+
       async msg => {
 
         try {
@@ -247,52 +161,69 @@ client.on(
               await response.arrayBuffer()
             );
 
-          const member =
-            await interaction.guild.members.fetch(
+          let member =
+            interaction.guild.members.cache.get(
               interaction.user.id
             );
 
+          if (!member) {
+
+            try {
+
+              member =
+                await interaction.guild.members.fetch(
+                  interaction.user.id
+                );
+
+            } catch {
+
+              member = null;
+
+            }
+
+          }
+
           const displayName =
-            member.displayName;
 
-          const inserted =
-            await db.query(
+            member
+              ? member.displayName
+              : interaction.user.username;
 
-              `
-              INSERT INTO battles
-              (
-                host,
-                hostname,
-                opponent,
-                date,
-                time,
-                posterdata
-              )
-              VALUES
-              (
-                $1,
-                $2,
-                $3,
-                $4,
-                $5,
-                $6
-              )
-              RETURNING *
-              `,
+          await db.query(
 
-              [
-                interaction.user.id,
-                displayName,
-                request.opponent,
-                request.preferred_date,
-                request.preferred_time,
-                buffer
-              ]
+            `
+            INSERT INTO battles
+            (
+              host,
+              hostname,
+              opponent,
+              date,
+              time,
+              posterdata
+            )
 
-            );
+            VALUES
+            (
+              $1,$2,$3,$4,$5,$6
+            )
+            `,
 
-          await postBattleNow(
-            inserted.rows[0]
+            [
+
+              interaction.user.id,
+
+              displayName,
+
+              request.opponent,
+
+              request.preferred_date,
+
+              request.preferred_time,
+
+              buffer
+
+            ]
+
           );
 
           await db.query(
@@ -328,149 +259,14 @@ client.on(
 );
 
 /*
-AUTO POST BATTLES
-EVERY MINUTE
-*/
-
-cron.schedule(
-  "* * * * *",
-  async () => {
-
-    try {
-
-      const result =
-        await db.query(
-
-          `
-          SELECT *
-          FROM battles
-          WHERE posted = FALSE
-          OR posted IS NULL
-          `
-
-        );
-
-      const battles =
-        result.rows;
-
-      const now =
-        new Date();
-
-      const currentDay =
-        String(
-          now.getDate()
-        ).padStart(2, "0");
-
-      const currentMonth =
-        String(
-          now.getMonth() + 1
-        ).padStart(2, "0");
-
-      const currentYear =
-        now.getFullYear();
-
-      const currentHour =
-        String(
-          now.getHours()
-        ).padStart(2, "0");
-
-      const currentMinute =
-        String(
-          now.getMinutes()
-        ).padStart(2, "0");
-
-      const currentDate =
-        `${currentDay}/${currentMonth}/${currentYear}`;
-
-      const currentTime =
-        `${currentHour}:${currentMinute}`;
-
-      console.log(
-
-        `🕒 Checking battles at ${currentDate} ${currentTime}`
-
-      );
-
-      const channel =
-        await client.channels.fetch(
-          process.env.BATTLE_CHANNEL_ID
-        );
-
-      if (!channel) {
-
-        console.log(
-          "❌ Battle channel not found"
-        );
-
-        return;
-
-      }
-
-      for (const battle of battles) {
-
-        if (
-
-          battle.date ===
-            currentDate &&
-
-          battle.time ===
-            currentTime
-
-        ) {
-
-          console.log(
-
-            `⚔ Posting battle: ${
-              battle.hostname ||
-              battle.host
-            } vs ${battle.opponent}`
-
-          );
-
-          await postBattleNow(
-            battle
-          );
-
-          await db.query(
-
-            `
-            UPDATE battles
-            SET posted = TRUE
-            WHERE id = $1
-            `,
-
-            [battle.id]
-
-          );
-
-          console.log(
-            `✅ Battle posted`
-          );
-
-        }
-
-      }
-
-    } catch(err) {
-
-      console.error(
-        "❌ Battle posting error:",
-        err
-      );
-
-    }
-
-  }
-
-);
-
-/*
 REMINDER SYSTEM
 30 MINUTES BEFORE
 */
 
 cron.schedule(
+
   "* * * * *",
+
   async () => {
 
     try {
@@ -481,13 +277,30 @@ cron.schedule(
 
       const battles =
         await db.query(
-          "SELECT * FROM battles"
+
+          `
+          SELECT *
+          FROM battles
+          `
+
         );
 
       const now =
         new Date();
 
       for (const battle of battles.rows) {
+
+        /*
+        SKIP INVALID
+        */
+
+        if (
+
+          !battle.date ||
+
+          !battle.time
+
+        ) continue;
 
         const key =
           `${battle.id}_${battle.date}_${battle.time}`;
@@ -497,27 +310,43 @@ cron.schedule(
         ) continue;
 
         /*
-        PARSE DATE
-        DD/MM/YYYY
+        VALIDATE DATE
         */
+
+        const dateParts =
+          battle.date.split("/");
+
+        const timeParts =
+          battle.time.split(":");
+
+        if (
+
+          dateParts.length !== 3 ||
+
+          timeParts.length !== 2
+
+        ) {
+
+          console.log(
+
+            `⚠ Invalid date/time for battle ${battle.id}`
+
+          );
+
+          continue;
+
+        }
 
         const [
           day,
           month,
           year
-        ] =
-          battle.date.split("/");
-
-        /*
-        PARSE TIME
-        HH:MM
-        */
+        ] = dateParts;
 
         const [
           hour,
           minute
-        ] =
-          battle.time.split(":");
+        ] = timeParts;
 
         const battleDate =
           new Date(
@@ -531,7 +360,25 @@ cron.schedule(
           );
 
         /*
-        DIFF IN MINUTES
+        INVALID DATE CHECK
+        */
+
+        if (
+          isNaN(battleDate)
+        ) {
+
+          console.log(
+
+            `⚠ Invalid parsed date for battle ${battle.id}`
+
+          );
+
+          continue;
+
+        }
+
+        /*
+        DIFF
         */
 
         const diff =
@@ -550,8 +397,11 @@ cron.schedule(
         */
 
         if (
+
           diff <= 30 &&
+
           diff > 29
+
         ) {
 
           const channel =
@@ -591,8 +441,10 @@ cron.schedule(
     } catch(err) {
 
       console.error(
+
         "❌ Reminder system error:",
         err
+
       );
 
     }
