@@ -1,4 +1,3 @@
-```js
 require("dotenv").config();
 
 const express = require("express");
@@ -32,13 +31,41 @@ const discordClient = new Client({
   ]
 });
 
-discordClient.login(process.env.BOT_TOKEN)
-.then(() => {
-  console.log("✅ Dashboard Discord client connected");
-})
-.catch(err => {
-  console.error("❌ Dashboard Discord login failed:", err);
-});
+/* ============================
+DISCORD LOGIN
+============================ */
+
+if (
+  process.env.BOT_TOKEN &&
+  process.env.BOT_TOKEN !== "undefined"
+) {
+
+  discordClient.login(process.env.BOT_TOKEN)
+
+  .then(() => {
+
+    console.log(
+      "✅ Dashboard Discord client connected"
+    );
+
+  })
+
+  .catch(err => {
+
+    console.error(
+      "❌ Dashboard Discord login failed:",
+      err.message
+    );
+
+  });
+
+} else {
+
+  console.error(
+    "❌ BOT_TOKEN missing in Railway variables"
+  );
+
+}
 
 /* ============================
 EXPRESS
@@ -86,8 +113,10 @@ passport.use(
   new DiscordStrategy(
     {
       clientID: process.env.DISCORD_CLIENT_ID,
-      clientSecret: process.env.DISCORD_CLIENT_SECRET,
-      callbackURL: process.env.DISCORD_CALLBACK_URL,
+      clientSecret:
+        process.env.DISCORD_CLIENT_SECRET,
+      callbackURL:
+        process.env.DISCORD_CALLBACK_URL,
       scope: ["identify", "guilds"]
     },
 
@@ -150,14 +179,21 @@ app.get("/", checkAuth, async (req, res) => {
 
     try {
 
-      guild =
-        await discordClient.guilds.fetch(
-          process.env.GUILD_ID
-        );
+      if (discordClient.isReady()) {
+
+        guild =
+          await discordClient.guilds.fetch(
+            process.env.GUILD_ID
+          );
+
+      }
 
     } catch (err) {
 
-      console.error("Guild fetch failed:", err);
+      console.error(
+        "Guild fetch failed:",
+        err.message
+      );
 
     }
 
@@ -176,7 +212,14 @@ app.get("/", checkAuth, async (req, res) => {
             member.displayName;
 
           battle.avatarUrl =
-            member.user.displayAvatarURL();
+            member.user.displayAvatarURL({
+              dynamic: true
+            });
+
+        } else {
+
+          battle.hostdisplayname =
+            battle.host;
 
         }
 
@@ -192,7 +235,8 @@ app.get("/", checkAuth, async (req, res) => {
     res.render("dashboard", {
       user: req.user,
       battles,
-      roleLevel: getRoleLevel(req.user)
+      roleLevel:
+        getRoleLevel(req.user)
     });
 
   } catch (err) {
@@ -592,4 +636,3 @@ app.listen(PORT, () => {
   );
 
 });
-```
