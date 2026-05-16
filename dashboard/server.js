@@ -42,22 +42,22 @@ if (
 
   discordClient.login(process.env.BOT_TOKEN)
 
-  .then(() => {
+    .then(() => {
 
-    console.log(
-      "✅ Dashboard Discord client connected"
-    );
+      console.log(
+        "✅ Dashboard Discord client connected"
+      );
 
-  })
+    })
 
-  .catch(err => {
+    .catch(err => {
 
-    console.error(
-      "❌ Dashboard Discord login failed:",
-      err.message
-    );
+      console.error(
+        "❌ Dashboard Discord login failed:",
+        err.message
+      );
 
-  });
+    });
 
 } else {
 
@@ -79,6 +79,7 @@ app.use(
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
+
     cookie: {
       maxAge: 1000 * 60 * 60 * 24 * 7
     }
@@ -110,14 +111,23 @@ passport.deserializeUser((obj, done) => {
 });
 
 passport.use(
+
   new DiscordStrategy(
+
     {
-      clientID: process.env.DISCORD_CLIENT_ID,
+      clientID:
+        process.env.DISCORD_CLIENT_ID,
+
       clientSecret:
         process.env.DISCORD_CLIENT_SECRET,
+
       callbackURL:
         process.env.DISCORD_CALLBACK_URL,
-      scope: ["identify", "guilds"]
+
+      scope: [
+        "identify",
+        "guilds"
+      ]
     },
 
     (
@@ -132,7 +142,9 @@ passport.use(
       });
 
     }
+
   )
+
 );
 
 /* ============================
@@ -167,6 +179,10 @@ app.get("/", checkAuth, async (req, res) => {
 
   try {
 
+    /*
+    GET BATTLES
+    */
+
     const result = await db.query(`
       SELECT *
       FROM battles
@@ -175,11 +191,24 @@ app.get("/", checkAuth, async (req, res) => {
 
     const battles = result.rows;
 
+    /*
+    DEFAULT VALUES
+    */
+
     let guild = null;
+
+    let guildMembers = [];
+
+    /*
+    FETCH DISCORD GUILD
+    */
 
     try {
 
-      if (discordClient.isReady()) {
+      if (
+        discordClient &&
+        discordClient.isReady()
+      ) {
 
         guild =
           await discordClient.guilds.fetch(
@@ -191,52 +220,119 @@ app.get("/", checkAuth, async (req, res) => {
     } catch (err) {
 
       console.error(
-        "Guild fetch failed:",
+        "❌ Guild fetch failed:",
         err.message
       );
 
     }
 
-    for (const battle of battles) {
+    /*
+    FETCH MEMBERS
+    */
+
+    if (guild) {
 
       try {
 
-        if (guild) {
+        const fetchedMembers =
+          await guild.members.fetch();
+
+        guildMembers = fetchedMembers
+
+          .filter(member =>
+            !member.user.bot
+          )
+
+          .map(member => ({
+
+            id: member.id,
+
+            name:
+              member.displayName ||
+              member.user.username,
+
+            avatar:
+              member.user.displayAvatarURL({
+                dynamic: true
+              })
+
+          }))
+
+          .sort((a, b) =>
+            a.name.localeCompare(b.name)
+          );
+
+      } catch (err) {
+
+        console.error(
+          "❌ Failed to fetch members:",
+          err.message
+        );
+
+      }
+
+    }
+
+    /*
+    ATTACH DISPLAY NAMES
+    */
+
+    for (const battle of battles) {
+
+      battle.hostdisplayname =
+        battle.host;
+
+      battle.avatarUrl = null;
+
+      if (guild) {
+
+        try {
 
           const member =
             await guild.members.fetch(
               battle.host
             );
 
-          battle.hostdisplayname =
-            member.displayName;
+          if (member) {
 
-          battle.avatarUrl =
-            member.user.displayAvatarURL({
-              dynamic: true
-            });
+            battle.hostdisplayname =
+              member.displayName ||
+              member.user.username;
 
-        } else {
+            battle.avatarUrl =
+              member.user.displayAvatarURL({
+                dynamic: true
+              });
 
-          battle.hostdisplayname =
-            battle.host;
+          }
+
+        } catch (err) {
+
+          console.log(
+            `⚠ Could not fetch member ${battle.host}`
+          );
 
         }
-
-      } catch {
-
-        battle.hostdisplayname =
-          battle.host;
 
       }
 
     }
 
+    /*
+    RENDER
+    */
+
     res.render("dashboard", {
+
       user: req.user,
+
       battles,
+
+      guildMembers,
+
       roleLevel:
         getRoleLevel(req.user)
+
     });
 
   } catch (err) {
@@ -443,13 +539,19 @@ app.post(
           opponent,
           date,
           time,
+
           req.file
             ? req.file.buffer
             : null,
+
           livelink,
+
           !!managergifting,
+
           !!adultonly,
+
           !!powerups,
+
           !!nohammers
         ]
 
@@ -486,11 +588,14 @@ app.post(
     try {
 
       await db.query(
+
         `
         DELETE FROM battles
         WHERE id = $1
         `,
+
         [req.params.id]
+
       );
 
       res.redirect("/");
@@ -531,7 +636,9 @@ app.get(
   ),
 
   (req, res) => {
+
     res.redirect("/");
+
   }
 );
 
@@ -566,17 +673,23 @@ app.get(
 
       const result =
         await db.query(
+
           `
           SELECT posterdata
           FROM battles
           WHERE id = $1
           `,
+
           [req.params.id]
+
         );
 
       if (
+
         !result.rows.length ||
+
         !result.rows[0].posterdata
+
       ) {
 
         return res
