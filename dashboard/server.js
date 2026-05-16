@@ -21,7 +21,10 @@ app.use(
   session({
     secret: process.env.SESSION_SECRET,
     resave: false,
-    saveUninitialized: false
+    saveUninitialized: false,
+    cookie: {
+      maxAge: 1000 * 60 * 60 * 24 * 7
+    }
   })
 );
 
@@ -58,42 +61,55 @@ passport.use(
         process.env.DISCORD_CALLBACK_URL,
       scope: ["identify", "guilds"]
     },
+
     (accessToken, refreshToken, profile, done) => {
+
       process.nextTick(() => {
         return done(null, profile);
       });
+
     }
   )
 );
 
 /* ============================
-   AUTH
+   AUTH MIDDLEWARE
 ============================ */
 
 function checkAuth(req, res, next) {
+
   if (req.isAuthenticated()) {
     return next();
   }
 
-  res.redirect("/login");
-}
+  res.redirect("/auth/discord");
 
-function resolveDisplayName(member) {
-  return (
-    member.nick ||
-    member.user?.global_name ||
-    member.user?.display_name ||
-    member.user?.username ||
-    "Unknown"
-  );
 }
 
 /* ============================
-   ROUTES
+   DISPLAY NAME RESOLVER
+============================ */
+
+function resolveDisplayName(member) {
+
+  return (
+    member?.nick ||
+    member?.user?.global_name ||
+    member?.user?.display_name ||
+    member?.user?.username ||
+    "Unknown"
+  );
+
+}
+
+/* ============================
+   HOME DASHBOARD
 ============================ */
 
 app.get("/", checkAuth, async (req, res) => {
+
   try {
+
     const result = await db.query(`
       SELECT *
       FROM battles
@@ -110,38 +126,66 @@ app.get("/", checkAuth, async (req, res) => {
 
   } catch (err) {
 
-    console.error(err);
+    console.error(
+      "❌ Dashboard load error:",
+      err
+    );
 
-    res.send("Database error");
+    res.status(500).send(
+      "Dashboard failed to load"
+    );
 
   }
+
 });
 
+/* ============================
+   DISCORD AUTH
+============================ */
+
 app.get(
-  "/login",
+  "/auth/discord",
   passport.authenticate("discord")
 );
 
 app.get(
-  "/callback",
+  "/auth/discord/callback",
+
   passport.authenticate("discord", {
     failureRedirect: "/"
   }),
+
   (req, res) => {
+
+    console.log(
+      `✅ ${req.user.username} logged in`
+    );
+
     res.redirect("/");
+
   }
 );
+
+/* ============================
+   LOGOUT
+============================ */
 
 app.get("/logout", (req, res) => {
 
   req.logout(() => {
-    res.redirect("/");
+
+    req.session.destroy(() => {
+
+      res.redirect("/");
+
+    });
+
   });
 
 });
 
 /* ============================
-   POSTER ROUTE
+   POSTER IMAGE ROUTE
 ============================ */
 
 app.get("/poster/:id", async (req, res) => {
@@ -157,9 +201,11 @@ app.get("/poster/:id", async (req, res) => {
       !result.rows.length ||
       !result.rows[0].posterdata
     ) {
+
       return res
         .status(404)
         .send("No poster found");
+
     }
 
     res.setHeader(
@@ -167,7 +213,9 @@ app.get("/poster/:id", async (req, res) => {
       "image/jpeg"
     );
 
-    res.send(result.rows[0].posterdata);
+    res.send(
+      result.rows[0].posterdata
+    );
 
   } catch (err) {
 
@@ -176,7 +224,9 @@ app.get("/poster/:id", async (req, res) => {
       err
     );
 
-    res.status(500).send("Server error");
+    res.status(500).send(
+      "Poster load failed"
+    );
 
   }
 
@@ -189,6 +239,7 @@ app.get("/poster/:id", async (req, res) => {
 app.post(
   "/battle/:id/delete",
   checkAuth,
+
   async (req, res) => {
 
     try {
@@ -198,13 +249,22 @@ app.post(
         [req.params.id]
       );
 
+      console.log(
+        `🗑 Deleted battle ${req.params.id}`
+      );
+
       res.redirect("/");
 
     } catch (err) {
 
-      console.error(err);
+      console.error(
+        "❌ Delete battle error:",
+        err
+      );
 
-      res.send("Delete failed");
+      res.status(500).send(
+        "Delete failed"
+      );
 
     }
 
@@ -212,15 +272,30 @@ app.post(
 );
 
 /* ============================
+   HEALTH CHECK
+============================ */
+
+app.get("/health", (req, res) => {
+
+  res.json({
+    status: "online",
+    dashboard: true,
+    timestamp: new Date()
+  });
+
+});
+
+/* ============================
    START SERVER
 ============================ */
 
-const PORT = process.env.PORT || 3000;
+const PORT =
+  process.env.PORT || 3000;
 
 app.listen(PORT, () => {
 
   console.log(
-    `🔥 Dashboard running on port ${PORT}`
+    `🔥 Flame Force Dashboard running on port ${PORT}`
   );
 
 });
