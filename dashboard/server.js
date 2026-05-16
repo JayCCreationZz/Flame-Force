@@ -512,164 +512,178 @@ app.post(
       } = req.body;
 
       /*
-      VALIDATE DATE
-      */
+CONVERT HTML DATE INPUT
+YYYY-MM-DD
+TO
+DD/MM/YYYY
+*/
 
-      const dateRegex =
-        /^\d{2}\/\d{2}\/\d{4}$/;
+let formattedDate = date;
 
-      /*
-      VALIDATE TIME
-      */
+if (date.includes("-")) {
 
-      const timeRegex =
-        /^\d{2}:\d{2}$/;
+  const [year, month, day] =
+    date.split("-");
 
-      if (
-        !dateRegex.test(date)
-      ) {
+  formattedDate =
+    `${day}/${month}/${year}`;
 
-        return res.send(
-          "Invalid date format"
+}
+
+/*
+VALIDATE DATE
+*/
+
+const dateRegex =
+  /^\d{2}\/\d{2}\/\d{4}$/;
+
+/*
+VALIDATE TIME
+*/
+
+const timeRegex =
+  /^\d{2}:\d{2}$/;
+
+if (
+  !dateRegex.test(formattedDate)
+) {
+
+  return res.send(
+    "Invalid date format"
+  );
+
+}
+
+if (
+  !timeRegex.test(time)
+) {
+
+  return res.send(
+    "Invalid time format"
+  );
+
+}
+/*
+GET HOST DISPLAY NAME
+*/
+
+let hostname = host;
+
+try {
+
+  const guild =
+    await discordClient.guilds.fetch(
+      process.env.GUILD_ID
+    );
+
+  /*
+  CACHE FIRST
+  */
+
+  let member =
+    guild.members.cache.get(
+      host
+    );
+
+  /*
+  FETCH ONLY IF NEEDED
+  */
+
+  if (!member) {
+
+    try {
+
+      member =
+        await guild.members.fetch(
+          host
         );
 
-      }
+    } catch {
 
-      if (
-        !timeRegex.test(time)
-      ) {
+      member = null;
 
-        return res.send(
-          "Invalid time format"
-        );
+    }
 
-      }
+  }
 
-      /*
-      GET HOST DISPLAY NAME
-      */
+  if (member) {
 
-      let hostname =
-        host;
+    hostname =
 
-      try {
+      member.displayName ||
 
-        const guild =
-          await discordClient.guilds.fetch(
-            process.env.GUILD_ID
-          );
+      member.user.username;
 
-        /*
-        CACHE FIRST
-        */
+  }
 
-        let member =
-          guild.members.cache.get(
-            host
-          );
+} catch(err) {
 
-        /*
-        FETCH ONLY IF NEEDED
-        */
+  console.log(
+    "⚠ Failed to fetch host display name"
+  );
 
-        if (!member) {
+}
+ /*
+INSERT BATTLE
+*/
 
-          try {
+const inserted =
+  await db.query(
 
-            member =
-              await guild.members.fetch(
-                host
-              );
+    `
+    INSERT INTO battles
+    (
+      host,
+      hostname,
+      opponent,
+      date,
+      time,
+      posted,
+      posterdata,
+      livelink,
+      managergifting,
+      adultonly,
+      powerups,
+      nohammers
+    )
 
-          } catch {
+    VALUES
+    (
+      $1,$2,$3,$4,$5,TRUE,$6,$7,$8,$9,$10,$11
+    )
 
-            member = null;
+    RETURNING *
+    `,
 
-          }
+    [
 
-        }
+      host,
 
-        if (member) {
+      hostname,
 
-          hostname =
+      opponent,
 
-            member.displayName ||
+      formattedDate,
 
-            member.user.username;
+      time,
 
-        }
+      req.file
+        ? req.file.buffer
+        : null,
 
-      } catch(err) {
+      livelink,
 
-        console.log(
+      !!managergifting,
 
-          "⚠ Failed to fetch host display name"
+      !!adultonly,
 
-        );
+      !!powerups,
 
-      }
+      !!nohammers
 
-      /*
-      INSERT BATTLE
-      */
+    ]
 
-      const inserted =
-        await db.query(
-
-          `
-          INSERT INTO battles
-          (
-            host,
-            hostname,
-            opponent,
-            date,
-            time,
-            posted,
-            posterdata,
-            livelink,
-            managergifting,
-            adultonly,
-            powerups,
-            nohammers
-          )
-
-          VALUES
-          (
-            $1,$2,$3,$4,$5,TRUE,$6,$7,$8,$9,$10,$11
-          )
-
-          RETURNING *
-          `,
-
-          [
-
-            host,
-
-            hostname,
-
-            opponent,
-
-            date,
-
-            time,
-
-            req.file
-              ? req.file.buffer
-              : null,
-
-            livelink,
-
-            !!managergifting,
-
-            !!adultonly,
-
-            !!powerups,
-
-            !!nohammers
-
-          ]
-
-        );
+  );
 
       /*
       INSTANT POST TO DISCORD
