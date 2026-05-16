@@ -1,266 +1,175 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Flame Force Dashboard</title>
 
-<script src="https://cdn.tailwindcss.com"></script>
+<head>
+
+  <meta charset="UTF-8" />
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+
+  <title>Ember Empire Dashboard</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
 
 </head>
+
 <body class="bg-slate-900 text-white min-h-screen">
 
-<div class="max-w-6xl mx-auto px-6 py-8">
+<div class="max-w-7xl mx-auto p-6">
 
-<!-- HEADER -->
+  <div class="flex items-center justify-between mb-8">
 
-<div class="flex justify-between items-center mb-6">
+    <div>
 
-<h1 class="text-3xl font-bold">🔥 Flame Force Dashboard</h1>
+      <h1 class="text-4xl font-bold">
+        🔥 Ember Empire Dashboard
+      </h1>
 
-<div class="flex gap-4 items-center">
+      <p class="opacity-70 mt-2">
+        Logged in as
+        <%= user.username %>
+      </p>
 
-<% if (user) { %>
-<span class="text-sm opacity-70">
-Logged in
-</span>
+    </div>
 
-<a href="/logout"
-class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg">
-Logout
-</a>
+    <a
+      href="/logout"
+      class="bg-red-600 hover:bg-red-700 px-5 py-3 rounded-xl"
+    >
+      Logout
+    </a>
 
-<% } else { %>
+  </div>
 
-<a href="/login"
-class="bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-lg">
-Login with Discord
-</a>
+  <!-- BATTLE CARDS -->
 
-<% } %>
+  <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
 
-</div>
-</div>
+  <% if (battles && battles.length) { %>
 
+  <% battles.forEach(b => { %>
 
-<!-- SEARCH BAR -->
+  <div class="bg-slate-800 rounded-2xl overflow-hidden shadow-lg border border-slate-700">
 
-<form method="GET" class="mb-6">
+    <% if (b.posterdata) { %>
 
-<input
-type="text"
-name="q"
-placeholder="Search host or opponent..."
-value="<%= (filters && filters.q) || '' %>"
-class="bg-slate-800 px-4 py-2 rounded-lg w-full"
-/>
+    <img
+      src="/poster/<%= b.id %>"
+      alt="Battle Poster"
+      class="w-full h-[420px] object-cover"
+    />
 
-</form>
+    <% } else { %>
 
+    <div class="w-full h-[420px] bg-slate-700 flex items-center justify-center text-slate-400">
+      No Poster
+    </div>
 
-<!-- CREATE BUTTON -->
+    <% } %>
 
-<% if (roleLevel === "admin" || roleLevel === "owner") { %>
+    <div class="p-5">
 
-<div class="mb-6">
+      <h2 class="text-xl font-bold mb-2">
+        ⚔ <%= b.hostdisplayname || b.hostname || b.host %>
+        vs
+        <%= b.opponent || "Unknown" %>
+      </h2>
 
-<a href="#createBattle"
-class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg inline-block">
-➕ Create Battle
-</a>
+      <div class="space-y-1 text-sm opacity-80">
 
-</div>
+        <p>📅 <%= b.date || "—" %></p>
 
-<% } %>
+        <p>⏰ <%= b.time || "—" %></p>
 
+      </div>
 
-<!-- BATTLE TABLE -->
+      <div class="flex flex-wrap gap-2 mt-4">
 
-<div class="bg-slate-800 rounded-xl overflow-hidden">
+        <% if (b.managergifting) { %>
+        <span class="bg-purple-600 px-2 py-1 rounded text-xs">
+          🎁 Manager Gifting
+        </span>
+        <% } %>
 
-<table class="w-full">
+        <% if (b.adultonly) { %>
+        <span class="bg-red-600 px-2 py-1 rounded text-xs">
+          🔞 18+
+        </span>
+        <% } %>
 
-<thead class="bg-slate-700 text-left">
+        <% if (b.powerups) { %>
+        <span class="bg-yellow-500 text-black px-2 py-1 rounded text-xs">
+          ⚡ Powerups
+        </span>
+        <% } %>
 
-<tr>
-<th class="p-3">Host</th>
-<th class="p-3">Opponent</th>
-<th class="p-3">Date</th>
-<th class="p-3">Time</th>
+        <% if (b.nohammers) { %>
+        <span class="bg-slate-600 px-2 py-1 rounded text-xs">
+          🔨 No Hammers
+        </span>
+        <% } %>
 
-<% if (roleLevel === "admin" || roleLevel === "owner") { %>
-<th class="p-3">Actions</th>
-<% } %>
+      </div>
 
-</tr>
+      <% if (b.livelink) { %>
 
-</thead>
+      <a
+        href="<%= b.livelink %>"
+        target="_blank"
+        class="mt-4 inline-block bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-lg"
+      >
+        🔗 Watch Battle
+      </a>
 
-<tbody>
+      <% } %>
 
-<% if (battles && battles.length) { %>
+      <% if (
+        roleLevel === "admin" ||
+        roleLevel === "owner"
+      ) { %>
 
-<% battles.forEach(b => { %>
+      <div class="mt-4">
 
-<tr class="border-t border-slate-700">
+        <form
+          action="/battle/<%= b.id %>/delete"
+          method="POST"
+        >
 
-<td class="p-3">
-<%= b.hostDisplayName || b.hostname || b.host %>
-</td>
+          <button
+            class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg"
+          >
+            Delete
+          </button>
 
-<td class="p-3">
-<%= b.opponent || "—" %>
-</td>
+        </form>
 
-<td class="p-3">
-<%= b.date || "—" %>
-</td>
+      </div>
 
-<td class="p-3">
-<%= b.time || "—" %>
-</td>
+      <% } %>
 
-<% if (roleLevel === "admin" || roleLevel === "owner") { %>
+    </div>
 
-<td class="p-3 flex gap-2">
+  </div>
 
-<form action="/battle/<%= b.id %>/delete" method="POST">
+  <% }) %>
 
-<button
-class="bg-red-600 hover:bg-red-700 px-3 py-1 rounded">
-Delete
-</button>
+  <% } else { %>
 
-</form>
+  <div class="col-span-full text-center opacity-60 py-10">
 
-</td>
+    No battles scheduled yet.
 
-<% } %>
+  </div>
 
-</tr>
+  <% } %>
 
-<% }) %>
-
-<% } else { %>
-
-<tr>
-
-<td colspan="5" class="p-6 text-center opacity-60">
-No battles scheduled yet.
-</td>
-
-</tr>
-
-<% } %>
-
-</tbody>
-
-</table>
-
-</div>
-
-
-<!-- CREATE FORM -->
-
-<% if (roleLevel === "admin" || roleLevel === "owner") { %>
-
-<div id="createBattle" class="mt-10 bg-slate-800 p-6 rounded-xl">
-
-<h2 class="text-xl font-semibold mb-4">
-Create Battle
-</h2>
-
-<form method="POST" action="/create-battle" enctype="multipart/form-data">
-
-<div class="grid grid-cols-2 gap-4">
-
-<select name="host"
-class="bg-slate-700 p-2 rounded">
-
-<% if (agencyMembers && agencyMembers.length) { %>
-
-<% agencyMembers.forEach(m => { %>
-
-<option value="<%= m.id %>">
-<%= m.username %>
-</option>
-
-<% }) %>
-
-<% } %>
-
-</select>
-
-<input
-name="hostName"
-placeholder="Host display override"
-class="bg-slate-700 p-2 rounded"
-/>
-
-<input
-name="opponent"
-placeholder="Opponent"
-class="bg-slate-700 p-2 rounded"
-/>
-
-<input
-type="date"
-name="date"
-class="bg-slate-700 p-2 rounded"
-/>
-
-<input
-type="time"
-name="time"
-class="bg-slate-700 p-2 rounded"
-/>
-
-<input
-name="liveLink"
-placeholder="Live link"
-class="bg-slate-700 p-2 rounded"
-/>
-
-<label class="flex items-center gap-2">
-<input type="checkbox" name="managergifting">
-Manager gifting
-</label>
-
-<label class="flex items-center gap-2">
-<input type="checkbox" name="adultonly">
-18+
-</label>
-
-<label class="flex items-center gap-2">
-<input type="checkbox" name="powerups">
-Powerups
-</label>
-
-<label class="flex items-center gap-2">
-<input type="checkbox" name="nohammers">
-No hammers
-</label>
-
-<input
-type="file"
-name="poster"
-class="col-span-2"
-/>
-
-</div>
-
-<button
-class="mt-4 bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-lg">
-Create Battle
-</button>
-
-</form>
-
-</div>
-
-<% } %>
+  </div>
 
 </div>
 
 </body>
+
 </html>
