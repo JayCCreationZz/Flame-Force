@@ -511,51 +511,223 @@ app.post(
         nohammers
       } = req.body;
 
-      await db.query(
+      /*
+      GET HOST DISPLAY NAME
+      */
 
-        `
-        INSERT INTO battles
-        (
-          host,
-          opponent,
-          date,
-          time,
-          posterdata,
-          livelink,
-          managergifting,
-          adultonly,
-          powerups,
-          nohammers
-        )
+      let hostname = host;
 
-        VALUES
-        (
-          $1,$2,$3,$4,$5,$6,$7,$8,$9,$10
-        )
-        `,
+      try {
 
-        [
-          host,
-          opponent,
-          date,
-          time,
+        const guild =
+          await discordClient.guilds.fetch(
+            process.env.GUILD_ID
+          );
 
-          req.file
-            ? req.file.buffer
-            : null,
+        const member =
+          await guild.members.fetch(
+            host
+          );
 
-          livelink,
+        if (member) {
 
-          !!managergifting,
+          hostname =
+            member.displayName ||
+            member.user.username;
 
-          !!adultonly,
+        }
 
-          !!powerups,
+      } catch(err) {
 
-          !!nohammers
-        ]
+        console.log(
+          "⚠ Failed to fetch host display name"
+        );
 
-      );
+      }
+
+      /*
+      INSERT BATTLE
+      */
+
+      const inserted =
+        await db.query(
+
+          `
+          INSERT INTO battles
+          (
+            host,
+            hostname,
+            opponent,
+            date,
+            time,
+            posterdata,
+            livelink,
+            managergifting,
+            adultonly,
+            powerups,
+            nohammers
+          )
+
+          VALUES
+          (
+            $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11
+          )
+
+          RETURNING *
+          `,
+
+          [
+
+            host,
+
+            hostname,
+
+            opponent,
+
+            date,
+
+            time,
+
+            req.file
+              ? req.file.buffer
+              : null,
+
+            livelink,
+
+            !!managergifting,
+
+            !!adultonly,
+
+            !!powerups,
+
+            !!nohammers
+
+          ]
+
+        );
+
+      /*
+      INSTANTLY POST TO DISCORD
+      */
+
+      try {
+
+        const battle =
+          inserted.rows[0];
+
+        const channel =
+          await discordClient.channels.fetch(
+            process.env.BATTLE_CHANNEL_ID
+          );
+
+        if (channel) {
+
+          const {
+            EmbedBuilder
+          } = require("discord.js");
+
+          const embed =
+            new EmbedBuilder()
+
+            .setTitle(
+              "🔥 New Battle Scheduled"
+            )
+
+            .addFields(
+
+              {
+                name: "Host",
+                value:
+                  battle.hostname ||
+                  battle.host
+              },
+
+              {
+                name: "Opponent",
+                value:
+                  battle.opponent
+              },
+
+              {
+                name: "Date",
+                value:
+                  battle.date
+              },
+
+              {
+                name: "Time",
+                value:
+                  battle.time
+              }
+
+            )
+
+            .setColor("#ff6600")
+
+            .setTimestamp();
+
+          if (battle.livelink) {
+
+            embed.addFields({
+
+              name: "🔴 LIVE",
+
+              value:
+                battle.livelink
+
+            });
+
+          }
+
+          await channel.send({
+
+            embeds: [embed],
+
+            files:
+              battle.posterdata
+
+              ? [
+
+                  {
+
+                    attachment:
+                      battle.posterdata,
+
+                    name:
+                      "poster.jpg"
+
+                  }
+
+                ]
+
+              : []
+
+          });
+
+          console.log(
+            "✅ Battle instantly posted to Discord"
+          );
+
+        } else {
+
+          console.log(
+            "❌ Battle channel not found"
+          );
+
+        }
+
+      } catch(err) {
+
+        console.error(
+          "❌ Discord instant post failed:",
+          err
+        );
+
+      }
+
+      /*
+      REDIRECT
+      */
 
       res.redirect("/");
 
@@ -574,7 +746,6 @@ app.post(
 
   }
 );
-
 /* ============================
 DELETE BATTLE
 ============================ */
