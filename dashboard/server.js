@@ -563,66 +563,7 @@ if (
   );
 
 }
-/*
-GET HOST DISPLAY NAME
-*/
 
-let hostname = host;
-
-try {
-
-  const guild =
-    await discordClient.guilds.fetch(
-      process.env.GUILD_ID
-    );
-
-  /*
-  CACHE FIRST
-  */
-
-  let member =
-    guild.members.cache.get(
-      host
-    );
-
-  /*
-  FETCH ONLY IF NEEDED
-  */
-
-  if (!member) {
-
-    try {
-
-      member =
-        await guild.members.fetch(
-          host
-        );
-
-    } catch {
-
-      member = null;
-
-    }
-
-  }
-
-  if (member) {
-
-    hostname =
-
-      member.displayName ||
-
-      member.user.username;
-
-  }
-
-} catch(err) {
-
-  console.log(
-    "⚠ Failed to fetch host display name"
-  );
-
-}
  /*
 INSERT BATTLE
 */
@@ -634,7 +575,6 @@ const inserted =
     INSERT INTO battles
     (
       host,
-      hostname,
       opponent,
       date,
       time,
@@ -648,7 +588,7 @@ const inserted =
 
     VALUES
     (
-      $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11
+      $1,$2,$3,$4,$5,$6,$7,$8,$9,$10
     )
 
     RETURNING *
@@ -657,8 +597,6 @@ const inserted =
     [
 
       host,
-
-      hostname,
 
       opponent,
 
@@ -683,7 +621,6 @@ const inserted =
     ]
 
   );
-
       /*
       INSTANT POST TO DISCORD
       */
