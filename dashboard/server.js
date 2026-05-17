@@ -638,7 +638,6 @@ const inserted =
       opponent,
       date,
       time,
-      posted,
       posterdata,
       livelink,
       managergifting,
@@ -649,7 +648,7 @@ const inserted =
 
     VALUES
     (
-      $1,$2,$3,$4,$5,TRUE,$6,$7,$8,$9,$10,$11
+      $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11
     )
 
     RETURNING *
