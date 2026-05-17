@@ -622,148 +622,153 @@ const inserted =
 
   );
       /*
-      INSTANT POST TO DISCORD
-      */
+INSTANT POST TO DISCORD
+*/
 
-      try {
+try {
 
-        const battle =
-          inserted.rows[0];
+  const battle =
+    inserted.rows[0];
 
-        const channel =
-          await discordClient.channels.fetch(
-            process.env.BATTLE_CHANNEL_ID
-          );
+  const channel =
+    await discordClient.channels.fetch(
+      process.env.BATTLE_CHANNEL_ID
+    );
 
-        if (channel) {
+  if (channel) {
 
-          const {
-            EmbedBuilder
-          } = require("discord.js");
+    const {
+      EmbedBuilder
+    } = require("discord.js");
 
-          const embed =
-            new EmbedBuilder()
+    const embed =
+      new EmbedBuilder()
 
-            .setTitle(
-              "🔥 New Battle Scheduled"
-            )
+      .setTitle(
+        "🔥 New Battle Scheduled"
+      )
 
-            .addFields(
+      .addFields(
 
-              {
-                name: "Host",
-                value:
-                  battle.hostname ||
-                  battle.host
-              },
+        {
+          name: "Host",
+          value:
+            `<@${battle.host}>`
+        },
 
-              {
-                name: "Opponent",
-                value:
-                  battle.opponent
-              },
+        {
+          name: "Opponent",
+          value:
+            battle.opponent
+        },
 
-              {
-                name: "Date",
-                value:
-                  battle.date
-              },
+        {
+          name: "Date",
+          value:
+            battle.date
+        },
 
-              {
-                name: "Time",
-                value:
-                  battle.time
-              }
-
-            )
-
-            .setColor("#ff6600")
-
-            .setTimestamp();
-
-          if (battle.livelink) {
-
-            embed.addFields({
-
-              name: "🔴 LIVE",
-
-              value:
-                battle.livelink
-
-            });
-
-          }
-
-          await channel.send({
-
-            embeds: [embed],
-
-            files:
-              battle.posterdata
-
-              ? [
-
-                  {
-
-                    attachment:
-                      battle.posterdata,
-
-                    name:
-                      "poster.jpg"
-
-                  }
-
-                ]
-
-              : []
-
-          });
-
-          console.log(
-
-            "✅ Battle instantly posted to Discord"
-
-          );
-
-        } else {
-
-          console.log(
-            "❌ Battle channel not found"
-          );
-
+        {
+          name: "Time",
+          value:
+            battle.time
         }
 
-      } catch(err) {
+      )
 
-        console.error(
+      .setColor("#ff6600")
 
-          "❌ Instant Discord post failed:",
-          err
+      .setTimestamp();
 
-        );
+    /*
+    LIVE LINK
+    */
 
-      }
+    if (battle.livelink) {
 
-      /*
-      REDIRECT
-      */
+      embed.addFields({
 
-      res.redirect("/");
+        name: "🔴 LIVE",
 
-    } catch(err) {
+        value:
+          battle.livelink
 
-      console.error(
-        "Create battle error:",
-        err
-      );
-
-      res.send(
-        "Battle creation failed"
-      );
+      });
 
     }
 
+    /*
+    SEND MESSAGE
+    */
+
+    await channel.send({
+
+      content:
+        `<@${battle.host}>`,
+
+      embeds: [embed],
+
+      files:
+        battle.posterdata
+
+        ? [
+
+            {
+
+              attachment:
+                battle.posterdata,
+
+              name:
+                "poster.jpg"
+
+            }
+
+          ]
+
+        : []
+
+    });
+
+    console.log(
+      "✅ Battle instantly posted to Discord"
+    );
+
+  } else {
+
+    console.log(
+      "❌ Battle channel not found"
+    );
+
   }
+
+} catch(err) {
+
+  console.error(
+    "❌ Instant Discord post failed:",
+    err
+  );
+
+}
+/*
+REDIRECT
+*/
+
+res.redirect("/");
+
+} catch(err) {
+
+  console.error(
+    "Create battle error:",
+    err
+  );
+
+  res.send(
+    "Battle creation failed"
+  );
+
+}
+
+}
 
 );
 /* ============================
