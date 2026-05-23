@@ -398,9 +398,9 @@ cron.schedule(
 
         if (
 
-          diff <= 30 &&
+          diff <= 180 &&
 
-          diff > 29
+          diff > 179
 
         ) {
 
@@ -418,7 +418,7 @@ cron.schedule(
                 battle.host
               } vs ${
                 battle.opponent
-              } starts in 30 minutes!`
+              } starts in 3 hours!`
 
             );
 
