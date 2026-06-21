@@ -37,7 +37,7 @@ client.once(
 
     console.log(
 
-      `🔥 Battle Bot online as ${client.user.tag}`
+      `⚔️ Battle Bot online as ${client.user.tag}`
 
     );
 

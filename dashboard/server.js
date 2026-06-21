@@ -941,7 +941,7 @@ const PORT =
 app.listen(PORT, () => {
 
   console.log(
-    `🔥 Flame Force Dashboard running on port ${PORT}`
+    `⚔️Shadows Of Valhalla⚔️ Dashboard running on port ${PORT}`
   );
 
 });

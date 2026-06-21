@@ -10,7 +10,7 @@
     content="width=device-width, initial-scale=1.0"
   />
 
-  <title>Flame Force Dashboard</title>
+  <title>⚔️Shadows Of Valhalla⚔️ Dashboard</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
 
@@ -30,8 +30,8 @@
 
       <div>
 
-        <h1 class="text-4xl font-bold text-orange-400">
-          🔥 Flame Force Dashboard
+        <h1 class="text-4xl font-bold text-purple-400">
+          ⚔️Shadows Of Valhalla⚔️ Dashboard
         </h1>
 
         <p class="opacity-70 mt-2">
@@ -47,14 +47,14 @@
 
         <a
           href="/calendar"
-          class="bg-indigo-600 hover:bg-indigo-700 px-5 py-3 rounded-xl transition"
+          class="bg-purple-700 hover:bg-purple-700 px-5 py-3 rounded-xl transition"
         >
           📅 Calendar
         </a>
 
         <a
           href="/request"
-          class="bg-orange-500 hover:bg-orange-600 text-black px-5 py-3 rounded-xl transition font-bold"
+          class="bg-purple-700-500 hover:bg-purple-700 text-white px-5 py-3 rounded-xl transition font-bold"
         >
           📨 Requests
         </a>
@@ -77,9 +77,9 @@
       roleLevel === "owner"
     ) { %>
 
-    <div class="bg-slate-800 border border-orange-500 rounded-2xl p-6 shadow-xl">
+    <div class="bg-slate-800 border border-purple-600 rounded-2xl p-6 shadow-xl">
 
-      <h2 class="text-2xl font-bold text-orange-400 mb-5">
+      <h2 class="text-2xl font-bold text-purple-400 mb-5">
         ➕ Create Battle
       </h2>
 
@@ -242,7 +242,7 @@
 
           <button
             type="submit"
-            class="w-full bg-orange-500 hover:bg-orange-600 text-black font-bold px-5 py-3 rounded-xl transition"
+            class="w-full bg-purple-700 hover:bg-purple-700 text-white font-bold px-5 py-3 rounded-xl transition"
           >
             CREATE BATTLE
           </button>
@@ -299,7 +299,7 @@
 
         <img
           src="<%= b.avatarUrl %>"
-          class="w-12 h-12 rounded-full border-2 border-orange-500"
+          class="w-12 h-12 rounded-full border-2 border-purple-600"
         />
 
         <% } %>
@@ -342,7 +342,7 @@
 
         <% if (b.managergifting) { %>
 
-        <span class="bg-purple-600 px-2 py-1 rounded text-xs">
+        <span class="bg-violet-700 px-2 py-1 rounded text-xs">
           🎁 Manager Gifting
         </span>
 
@@ -358,7 +358,7 @@
 
         <% if (b.powerups) { %>
 
-        <span class="bg-yellow-500 text-black px-2 py-1 rounded text-xs">
+        <span class="bg-violet-600 text-white px-2 py-1 rounded text-xs">
           ⚡ Powerups
         </span>
 
@@ -381,7 +381,7 @@
       <a
         href="<%= b.livelink %>"
         target="_blank"
-        class="mt-5 inline-block bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-lg transition"
+        class="mt-5 inline-block bg-purple-700 hover:bg-purple-700 px-4 py-2 rounded-lg transition"
       >
         🔗 Watch Battle
       </a>
@@ -399,7 +399,7 @@
 
         <a
           href="/battle/<%= b.id %>/edit"
-          class="bg-yellow-500 hover:bg-yellow-600 text-black px-4 py-2 rounded-lg transition"
+          class="bg-violet-600 hover:bg-violet-600 text-white px-4 py-2 rounded-lg transition"
         >
           ✏ Edit
         </a>
